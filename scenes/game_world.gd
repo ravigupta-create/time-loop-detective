@@ -437,7 +437,7 @@ var npc_nodes: Dictionary = {}
 var spawn_points: Dictionary = {}
 var location_id: int = %d
 
-const NPC_SCENE = preload("res://scenes/entities/npc/npc.tscn")
+var NPC_SCENE = load("res://scenes/entities/npc/npc.tscn")
 
 func _ready():
 	for i in 10:

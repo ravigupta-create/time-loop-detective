@@ -125,7 +125,7 @@ func _process_follow_mode(_delta: float) -> void:
 	# Find the target NPC in the scene
 	var target: Node2D = null
 	for npc in nearby_npcs:
-		if npc.has_method("get_npc_id") and npc.get_npc_id() == follow_target_id:
+		if is_instance_valid(npc) and npc.has_method("get_npc_id") and npc.get_npc_id() == follow_target_id:
 			target = npc
 			break
 
@@ -187,6 +187,8 @@ func _get_best_interaction_target() -> Node:
 	var best: Node = null
 	var best_priority := -1
 	for target in all_targets:
+		if not is_instance_valid(target):
+			continue
 		var priority := 0
 		if target.is_in_group("npcs"):
 			priority = 4

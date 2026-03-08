@@ -16,6 +16,7 @@ const MAX_SFX_PLAYERS: int = 8
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_music_player = AudioStreamPlayer.new()
 	_music_player.bus = "Music"
 	add_child(_music_player)

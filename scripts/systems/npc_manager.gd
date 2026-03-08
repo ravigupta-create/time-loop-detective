@@ -17,7 +17,7 @@ var _schedules: Dictionary = {}     # npc_id -> Array[Dictionary]
 
 # The NPC scene to instantiate when spawning
 var _npc_scene: PackedScene = null
-const NPC_SCENE_PATH: String = "res://scenes/npc.tscn"
+const NPC_SCENE_PATH: String = "res://scenes/entities/npc/npc.tscn"
 
 # Crime-override tracking: crime engine can override an NPC's scheduled behavior
 var _crime_overrides: Dictionary = {}  # npc_id -> {location, position, state, activity}
@@ -130,12 +130,11 @@ func _apply_state_to_instance(npc_id: String) -> void:
 	var target_state: int = state_info["state"]
 	var target_pos: Vector2 = state_info["position"]
 
-	# Drive the state machine on the NPC node
-	if instance.has_node("NPCStateMachine"):
-		var fsm := instance.get_node("NPCStateMachine") as NPCStateMachine
-		if fsm.current_state != target_state:
-			fsm.transition_to(target_state)
-		fsm.set_target(target_pos)
+	# Drive the NPC's state and target position
+	if instance.has_method("set_state"):
+		instance.set_state(target_state)
+	if instance.has_method("set_target"):
+		instance.set_target(target_pos)
 
 
 # ---------------------------------------------------------------------------

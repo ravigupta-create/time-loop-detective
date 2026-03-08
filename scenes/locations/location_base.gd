@@ -40,7 +40,6 @@ func _ready() -> void:
 
 	# Create weather overlay
 	_weather_overlay = ColorRect.new()
-	_weather_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_weather_overlay.size = Vector2(location_width * Constants.TILE_SIZE, location_height * Constants.TILE_SIZE)
 	_weather_overlay.color = Color(1, 1, 1, 0)
 	_weather_overlay.z_index = 5

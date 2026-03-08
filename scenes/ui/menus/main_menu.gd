@@ -345,14 +345,12 @@ func _add_slider_setting(label_text: String, y_pos: float, initial_value: float,
 func _on_new_game() -> void:
 	EventBus.sfx_requested.emit("interact")
 	EventBus.game_started.emit()
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 
 func _on_continue() -> void:
 	if SaveManager.load_game():
 		EventBus.sfx_requested.emit("interact")
 		EventBus.game_loaded.emit()
-		get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 
 func _on_settings() -> void:
