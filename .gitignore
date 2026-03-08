@@ -1,0 +1,5 @@
+# Godot build cache
+.godot/
+
+# Import metadata in docs (not needed for web)
+docs/*.import
