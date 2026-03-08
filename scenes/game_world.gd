@@ -5,6 +5,9 @@ var current_location: Node2D = null
 var current_location_id: int = Enums.LocationID.APARTMENT_COMPLEX
 var player: CharacterBody2D = null
 var npc_manager: Node = null
+var weather_system: WeatherSystem = null
+var npc_interaction_system: NPCInteractionSystem = null
+var endgame_manager: EndgameManager = null
 
 const PLAYER_SCENE := preload("res://scenes/entities/player/player.tscn")
 
@@ -40,6 +43,21 @@ func _ready() -> void:
 	npc_manager.name = "NPCManager"
 	npc_manager.set_script(load("res://scripts/systems/npc_manager.gd"))
 	add_child(npc_manager)
+
+	# Setup weather system
+	weather_system = WeatherSystem.new()
+	weather_system.name = "WeatherSystem"
+	add_child(weather_system)
+
+	# Setup NPC interaction system
+	npc_interaction_system = NPCInteractionSystem.new()
+	npc_interaction_system.name = "NPCInteractionSystem"
+	add_child(npc_interaction_system)
+
+	# Setup endgame manager
+	endgame_manager = EndgameManager.new()
+	endgame_manager.name = "EndgameManager"
+	add_child(endgame_manager)
 
 	# Start game
 	_load_location(GameState.last_location)
@@ -121,8 +139,15 @@ func _spawn_npcs_for_location(location_id: int) -> void:
 	for i in npcs_here.size():
 		var npc_id: String = npcs_here[i]
 		var npc_data := NPCDatabase.get_npc_data(npc_id)
-		var pos := current_location.get_spawn_position(i) if current_location.has_method("get_spawn_position") else Vector2(100 + i * 50, 150)
-		current_location.spawn_npc(npc_id, npc_data, pos)
+		if npc_data.is_empty():
+			continue
+		var pos: Vector2
+		if current_location and current_location.has_method("get_spawn_position"):
+			pos = current_location.get_spawn_position(i)
+		else:
+			pos = Vector2(100 + i * 50, 150)
+		if current_location and current_location.has_method("spawn_npc"):
+			current_location.spawn_npc(npc_id, npc_data, pos)
 
 
 func _on_time_tick(current_time: float) -> void:
@@ -137,6 +162,11 @@ func _on_time_tick(current_time: float) -> void:
 		Constants.NPC_TOMMY
 	]
 
+	if not current_location or not is_instance_valid(current_location):
+		return
+	if not current_location.get("npc_nodes") is Dictionary:
+		return
+
 	for npc_id in all_ids:
 		var schedule := ScheduleEvaluator.get_schedule_for_npc(npc_id)
 		var eval_result := ScheduleEvaluator.evaluate(npc_id, current_time, schedule)
@@ -148,15 +178,22 @@ func _on_time_tick(current_time: float) -> void:
 			# NPC arrived
 			var npc_data := NPCDatabase.get_npc_data(npc_id)
 			var pos: Vector2 = eval_result.get("position", Vector2(200, 150))
-			current_location.spawn_npc(npc_id, npc_data, pos)
+			if current_location.has_method("spawn_npc"):
+				current_location.spawn_npc(npc_id, npc_data, pos)
 			EventBus.npc_arrived_at_location.emit(npc_id, current_location_id)
 		elif not should_be_here and is_here:
-			# NPC left
-			current_location.despawn_npc(npc_id)
+			# NPC left — check instance is still valid before despawning
+			if is_instance_valid(current_location.npc_nodes.get(npc_id)):
+				current_location.despawn_npc(npc_id)
+			else:
+				current_location.npc_nodes.erase(npc_id)
 
 		# Update NPC state if they're in the scene
 		if should_be_here and npc_id in current_location.npc_nodes:
-			var npc_node: CharacterBody2D = current_location.npc_nodes[npc_id]
+			var npc_node = current_location.npc_nodes[npc_id]
+			if not is_instance_valid(npc_node):
+				current_location.npc_nodes.erase(npc_id)
+				continue
 			var target_state: int = eval_result.get("state", Enums.NPCState.IDLE)
 			if npc_node.current_state != Enums.NPCState.CONVERSATION: # Don't interrupt conversations
 				npc_node.set_state(target_state)
@@ -166,6 +203,30 @@ func _on_time_tick(current_time: float) -> void:
 		# Record to timeline if player can see
 		if should_be_here:
 			GameState.record_timeline_entry(npc_id, current_location_id, eval_result.get("activity", "unknown"))
+
+	# Check for NPC-to-NPC interactions
+	_check_npc_interactions(current_time)
+
+
+func _check_npc_interactions(current_time: float) -> void:
+	if not npc_interaction_system or not current_location:
+		return
+	if not current_location.get("npc_nodes") is Dictionary:
+		return
+
+	var present_npcs: Array[String] = []
+	for npc_id in current_location.npc_nodes:
+		if is_instance_valid(current_location.npc_nodes[npc_id]):
+			present_npcs.append(npc_id)
+
+	# Generate all pairs
+	var pairs: Array = []
+	for i in present_npcs.size():
+		for j in range(i + 1, present_npcs.size()):
+			pairs.append([present_npcs[i], present_npcs[j]])
+
+	if not pairs.is_empty():
+		npc_interaction_system.check_interactions(pairs, current_location_id, current_time)
 
 
 func _on_loop_reset(_loop_number: int) -> void:
@@ -199,51 +260,66 @@ func _on_player_interacted(target: Node) -> void:
 
 
 func _get_dialogue_for_npc(npc_id: String, npc_data: Dictionary) -> Dictionary:
-	var dialogues: Dictionary = npc_data.get("dialogue_trees", {})
-	var available_dialogue := {}
-
-	# Start with default greeting
-	if "greeting" in dialogues:
-		available_dialogue = dialogues["greeting"].duplicate(true)
-
-	# Check for special dialogues unlocked by clues
-	for key in dialogues:
-		if key == "greeting":
-			continue
-		var dlg: Dictionary = dialogues[key]
-		var required_clues: Array = dlg.get("required_clues", [])
-		var all_met := true
-		for clue_id in required_clues:
-			if clue_id not in GameState.discovered_clues:
-				all_met = false
-				break
-		if all_met and not GameState.has_seen_dialogue(npc_id, key):
-			# This dialogue is available
-			if available_dialogue.is_empty():
-				available_dialogue = dlg.duplicate(true)
-			else:
-				# Add as additional choice
-				var extra_lines: Array = dlg.get("lines", [])
-				if not extra_lines.is_empty():
-					var existing_lines: Array = available_dialogue.get("lines", [])
-					existing_lines.append_array(extra_lines)
-					available_dialogue["lines"] = existing_lines
-
-	# Fallback generic dialogue
-	if available_dialogue.is_empty():
-		available_dialogue = {
-			"id": "generic_%s" % npc_id,
-			"lines": [
-				{
-					"text": "Hello there. I'm %s." % npc_data.get("name", "nobody"),
-					"speaker": npc_id,
-					"truthful": true,
-					"emotion": "neutral"
-				}
-			]
+	var dialogues: Dictionary = npc_data.get("dialogue_trees", npc_data.get("default_dialogue", {}))
+	if dialogues.is_empty():
+		return {
+			"lines": [{"text": "...", "speaker": npc_id, "truthful": true}]
 		}
 
-	return available_dialogue
+	# Build a full navigable tree — all branches accessible via leads_to
+	var tree: Dictionary = dialogues.duplicate(true)
+
+	# Select the best greeting variant based on game state
+	var greeting_key := "greeting"
+	var conspiracy: int = GameState.conspiracy_progress
+	var loop_num: int = GameState.current_loop
+	if conspiracy >= 75 and "greeting_late_game" in tree:
+		greeting_key = "greeting_late_game"
+	elif loop_num >= 5 and "greeting_familiar" in tree:
+		greeting_key = "greeting_familiar"
+
+	# Set top-level lines from selected greeting
+	if greeting_key in tree:
+		tree["lines"] = tree[greeting_key].get("lines", [])
+	elif "greeting" in tree:
+		tree["lines"] = tree["greeting"].get("lines", [])
+	else:
+		tree["lines"] = [{"text": "...", "speaker": npc_id, "truthful": true}]
+
+	# Dynamically inject conspiracy-gated choices into the greeting
+	var greeting_lines: Array = tree.get("lines", [])
+	if not greeting_lines.is_empty():
+		var first_line: Dictionary = greeting_lines[0]
+		var choices: Array = first_line.get("choices", [])
+		# Add conspiracy-gated branches as extra choices
+		for key in tree:
+			var branch: Dictionary = tree[key]
+			var min_consp: int = branch.get("min_conspiracy", 0)
+			var required_clues: Array = branch.get("required_clues", [])
+			if min_consp > 0 and conspiracy >= min_consp:
+				var label: String = branch.get("choice_label", "")
+				if not label.is_empty() and not _choice_exists(choices, key):
+					choices.append({"id": key, "text": label, "leads_to": key})
+			if not required_clues.is_empty():
+				var all_met := true
+				for clue_id in required_clues:
+					if clue_id not in GameState.discovered_clues:
+						all_met = false
+						break
+				if all_met:
+					var label: String = branch.get("choice_label", "")
+					if not label.is_empty() and not _choice_exists(choices, key):
+						choices.append({"id": key, "text": label, "leads_to": key})
+		first_line["choices"] = choices
+
+	return tree
+
+
+func _choice_exists(choices: Array, choice_id: String) -> bool:
+	for c in choices:
+		if c.get("id", "") == choice_id:
+			return true
+	return false
 
 
 func _get_entrance_position(location_id: int) -> Vector2:

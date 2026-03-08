@@ -14,12 +14,15 @@ static func evaluate(npc_id: String, current_time: float, schedule: Array[Dictio
 	# Walk the schedule in order; return the entry whose window contains current_time.
 	for entry in schedule:
 		if current_time >= entry["start_time"] and current_time < entry["end_time"]:
-			return {
+			var result := {
 				"location": entry["location"] as int,
 				"position": entry["position"] as Vector2,
 				"activity": entry["activity"] as String,
 				"state":    entry["state"] as int,
 			}
+			# Apply weather overrides for outdoor locations in bad weather
+			result = _apply_weather_override(npc_id, result)
+			return result
 
 	# Fallback -- should not happen if schedules cover 0-600
 	if schedule.size() > 0:
@@ -37,6 +40,58 @@ static func evaluate(npc_id: String, current_time: float, schedule: Array[Dictio
 		"activity": "idle",
 		"state":    Enums.NPCState.IDLE,
 	}
+
+
+## Weather-conditional schedule overrides: NPCs avoid outdoor locations in rain/fog.
+static func _apply_weather_override(npc_id: String, result: Dictionary) -> Dictionary:
+	if not WeatherSystem.instance:
+		return result
+
+	if not WeatherSystem.instance.is_outdoor_unfriendly():
+		return result
+
+	var loc_id: int = result["location"]
+	var is_outdoor := loc_id == Enums.LocationID.RIVERSIDE_PARK or \
+					  loc_id == Enums.LocationID.STREET_MARKET or \
+					  loc_id == Enums.LocationID.DOCKS or \
+					  loc_id == Enums.LocationID.BACK_ALLEY
+
+	if not is_outdoor:
+		return result
+
+	# Some NPCs stay outdoors regardless (Penny lives outdoors, Tommy has deliveries)
+	if npc_id == Constants.NPC_PENNY or npc_id == Constants.NPC_TOMMY:
+		return result
+
+	# Redirect to indoor location based on NPC
+	var override := result.duplicate()
+	match npc_id:
+		Constants.NPC_MARIA:
+			override["location"] = Enums.LocationID.CAFE_ROSETTA
+			override["position"] = Vector2(140, 90)
+			override["activity"] = "Staying inside due to weather"
+		Constants.NPC_IRIS:
+			override["location"] = Enums.LocationID.HOTEL_MARLOW
+			override["position"] = Vector2(100, 80)
+			override["activity"] = "Sheltering from weather at hotel"
+		Constants.NPC_NINA:
+			override["location"] = Enums.LocationID.CAFE_ROSETTA
+			override["position"] = Vector2(120, 100)
+			override["activity"] = "Sheltering at cafe"
+		Constants.NPC_HALE:
+			override["location"] = Enums.LocationID.POLICE_STATION
+			override["position"] = Vector2(120, 80)
+			override["activity"] = "Staying at station due to weather"
+		Constants.NPC_ELEANOR:
+			override["location"] = Enums.LocationID.POLICE_STATION
+			override["position"] = Vector2(200, 140)
+			override["activity"] = "Working late at morgue"
+		_:
+			override["location"] = Enums.LocationID.APARTMENT_COMPLEX
+			override["position"] = Vector2(160, 120)
+			override["activity"] = "Sheltering from weather"
+	override["state"] = Enums.NPCState.IDLE
+	return override
 
 
 ## Returns the full day schedule for an NPC.

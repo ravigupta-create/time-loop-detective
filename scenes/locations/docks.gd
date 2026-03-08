@@ -135,6 +135,20 @@ func _setup_ambient() -> void:
 	EventBus.ambience_change_requested.emit("docks")
 
 
+func _setup_interactables() -> void:
+	var ts := Constants.TILE_SIZE
+	# Shipping manifest on crate
+	_add_interactable("shipping_manifest", "Shipping Manifest",
+		"A manifest nailed to a crate: 'CONTENTS: Laboratory Equipment. RECIPIENT: City Hall Basement. SENDER: [REDACTED]. HANDLE WITH EXTREME CARE.'",
+		Enums.ClueCategory.CONSPIRACY, 3,
+		Vector2(10 * ts + 4, 7 * ts), Color(0.9, 0.85, 0.6, 0.5))
+	# Scuff marks and blood
+	_add_interactable("dock_scuff_marks", "Scuff Marks",
+		"Deep scuff marks on the dock planks, as if something heavy was dragged. Dark stains that could be blood trail toward the water's edge.",
+		Enums.ClueCategory.PHYSICAL, 2,
+		Vector2(24 * ts, 12 * ts), Color(0.5, 0.2, 0.2, 0.4))
+
+
 func _add_rect(color: Color, pos: Vector2, rect_size: Vector2, z: int = -5) -> void:
 	var r := ColorRect.new()
 	r.color = color

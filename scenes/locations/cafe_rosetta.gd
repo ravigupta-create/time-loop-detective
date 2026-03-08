@@ -105,6 +105,20 @@ func _setup_ambient() -> void:
 	EventBus.ambience_change_requested.emit("cafe")
 
 
+func _setup_interactables() -> void:
+	var ts := Constants.TILE_SIZE
+	# Receipt behind counter showing large payment
+	_add_interactable("cafe_receipt", "Large Payment Receipt",
+		"A crumpled receipt behind the counter: '$5,000 cash payment from V. Crane - catering services.' That's a lot of catering.",
+		Enums.ClueCategory.FINANCIAL, 2,
+		Vector2(16 * ts, 2 * ts + 8), Color(0.9, 0.85, 0.5, 0.5))
+	# Hidden note in tip jar
+	_add_interactable("tip_jar_note", "Note in Tip Jar",
+		"A folded note buried in coins: 'M - They know you saw. Be careful. - I.C.'",
+		Enums.ClueCategory.TESTIMONY, 2,
+		Vector2(22 * ts, 3 * ts), Color(0.7, 0.9, 0.7, 0.5))
+
+
 func _add_rect(color: Color, pos: Vector2, rect_size: Vector2, z: int = -5) -> void:
 	var r := ColorRect.new()
 	r.color = color

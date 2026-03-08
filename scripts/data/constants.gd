@@ -34,6 +34,17 @@ const CONSPIRACY_TIER_4: int = 90
 
 # Save
 const SAVE_PATH: String = "user://detective_save.json"
+const SAVE_BACKUP_PATH: String = "user://detective_save_backup.json"
+
+# Weather
+const WEATHER_CLEAR_WEIGHT: float = 0.50
+const WEATHER_OVERCAST_WEIGHT: float = 0.20
+const WEATHER_RAIN_WEIGHT: float = 0.20
+const WEATHER_FOG_WEIGHT: float = 0.10
+
+# NPC Interaction
+const NPC_INTERACTION_DURATION: float = 20.0
+const NPC_INTERACTION_COOLDOWN: float = 60.0
 
 # Locations
 const LOCATION_NAMES: Dictionary = {

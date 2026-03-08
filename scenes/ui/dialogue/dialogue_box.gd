@@ -79,6 +79,9 @@ func _ready() -> void:
 	_build_ui()
 	_setup_typewriter_timer()
 
+	# Handle mid-dialogue loop reset
+	EventBus.loop_reset.connect(_on_loop_reset)
+
 
 func _build_ui() -> void:
 	# Semi-transparent background overlay
@@ -207,6 +210,10 @@ func start_dialogue(npc_id: String, dialogue_tree: Dictionary) -> void:
 
 	# Resolve lines from the tree
 	_current_lines = dialogue_tree.get("lines", [])
+
+	# Guard against empty dialogue
+	if _current_lines.is_empty():
+		_current_lines = [{"text": "...", "speaker": npc_id, "truthful": true}]
 
 	# Update portrait
 	_portrait_rect.color = NPC_PORTRAIT_COLORS.get(npc_id, Color.GRAY)
@@ -726,6 +733,7 @@ func _ask_npc_about_clue(clue_id: String) -> void:
 # ---------------------------------------------------------------------------
 
 func _end_dialogue() -> void:
+	var stored_npc_id := current_npc_id
 	is_active = false
 	visible = false
 	_evidence_panel.visible = false
@@ -737,5 +745,10 @@ func _end_dialogue() -> void:
 
 	get_tree().paused = false
 
-	EventBus.dialogue_ended.emit(current_npc_id)
-	EventBus.npc_interaction_ended.emit(current_npc_id)
+	EventBus.dialogue_ended.emit(stored_npc_id)
+	EventBus.npc_interaction_ended.emit(stored_npc_id)
+
+
+func _on_loop_reset(_loop_number: int) -> void:
+	if is_active:
+		_end_dialogue()

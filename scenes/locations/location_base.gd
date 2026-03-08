@@ -10,6 +10,7 @@ var spawn_points: Dictionary = {} # marker_name -> Vector2
 var npc_nodes: Dictionary = {} # npc_id -> NPC node
 var evidence_nodes: Array[Node] = []
 var door_areas: Array[Area2D] = []
+var _weather_overlay: ColorRect = null
 
 @onready var tilemap: TileMapLayer = $GroundLayer
 @onready var wall_layer: TileMapLayer = $WallLayer
@@ -26,11 +27,22 @@ func _ready() -> void:
 	_setup_spawn_points()
 	_setup_doors()
 	_setup_ambient()
+	_setup_interactables()
 
 	EventBus.time_tick.connect(_on_time_tick)
 	EventBus.evidence_spawned.connect(_on_evidence_spawned)
 	EventBus.time_of_day_changed.connect(_on_time_of_day_changed)
+	EventBus.weather_changed.connect(_on_weather_changed)
 	EventBus.player_entered_location.emit(location_id)
+
+	# Create weather overlay
+	_weather_overlay = ColorRect.new()
+	_weather_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_weather_overlay.size = Vector2(location_width * Constants.TILE_SIZE, location_height * Constants.TILE_SIZE)
+	_weather_overlay.color = Color(1, 1, 1, 0)
+	_weather_overlay.z_index = 5
+	_weather_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_weather_overlay)
 
 
 func _setup_navigation() -> void:
@@ -74,6 +86,43 @@ func _setup_ambient() -> void:
 	pass
 
 
+func _setup_interactables() -> void:
+	# Override to add location-specific discoverable interactions
+	pass
+
+
+func _add_interactable(clue_id: String, title: String, description: String, category: int, importance: int, pos: Vector2, visual_color: Color = Color(0.5, 0.7, 1.0, 0.5)) -> void:
+	## Create a discoverable interaction point that reveals a clue when examined.
+	var obj := Area2D.new()
+	obj.add_to_group("interactables")
+	obj.position = pos
+
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(14, 14)
+	shape.shape = rect
+	obj.add_child(shape)
+
+	# Subtle glow indicator
+	var visual := ColorRect.new()
+	visual.color = visual_color
+	visual.size = Vector2(10, 10)
+	visual.position = Vector2(-5, -5)
+	visual.z_index = 2
+	obj.add_child(visual)
+
+	var clue_data := {
+		"id": clue_id,
+		"title": title,
+		"description": description,
+		"category": category,
+		"importance": importance,
+	}
+	obj.set_meta("clue_data", clue_data)
+
+	entities.add_child(obj)
+
+
 func _on_time_tick(current_time: float) -> void:
 	_update_day_night(current_time)
 
@@ -87,6 +136,20 @@ func _update_day_night(_current_time: float) -> void:
 func _on_time_of_day_changed(tod: int) -> void:
 	if day_night:
 		day_night.color = Palette.get_time_color(tod)
+
+
+func _on_weather_changed(weather_type: int) -> void:
+	if not _weather_overlay:
+		return
+	match weather_type:
+		Enums.WeatherType.CLEAR:
+			_weather_overlay.color = Color(1, 1, 1, 0)
+		Enums.WeatherType.OVERCAST:
+			_weather_overlay.color = Color(0.5, 0.5, 0.55, 0.15)
+		Enums.WeatherType.RAIN:
+			_weather_overlay.color = Color(0.3, 0.35, 0.45, 0.25)
+		Enums.WeatherType.FOG:
+			_weather_overlay.color = Color(0.7, 0.7, 0.75, 0.35)
 
 
 func _on_evidence_spawned(evidence_id: String, ev_location: int) -> void:

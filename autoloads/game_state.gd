@@ -158,6 +158,9 @@ func _check_auto_deductions() -> void:
 						})
 						add_connection(clue_a["id"], clue_b["id"], Enums.ConnectionType.CONTRADICTION)
 
+	# Run advanced deduction engine
+	ClueDeduction.run_all_deductions()
+
 
 func _connection_exists(clue_a: String, clue_b: String) -> bool:
 	for conn in clue_connections:

@@ -140,6 +140,20 @@ func _setup_ambient() -> void:
 	EventBus.ambience_change_requested.emit("market")
 
 
+func _setup_interactables() -> void:
+	var ts := Constants.TILE_SIZE
+	# Dropped business card near fountain
+	_add_interactable("crane_business_card", "Dropped Business Card",
+		"A business card near the fountain: 'Crane Development Group - Victor Crane, CEO. Building tomorrow, today.' On the back, handwritten: 'H - usual amount, usual place.'",
+		Enums.ClueCategory.FINANCIAL, 2,
+		Vector2(18 * ts, 14 * ts + 4), Color(0.9, 0.9, 0.85, 0.5))
+	# Overheard gossip at fish stall (newspaper)
+	_add_interactable("market_newspaper", "Discarded Newspaper",
+		"A newspaper left at a stall, headline circled in red: 'THIRD PROPERTY OWNER SELLS TO CRANE GROUP UNDER MYSTERIOUS CIRCUMSTANCES.' The article is torn after the first paragraph.",
+		Enums.ClueCategory.TESTIMONY, 2,
+		Vector2(8 * ts + 4, 16 * ts + 4), Color(0.8, 0.8, 0.7, 0.5))
+
+
 func _add_stall(pos: Vector2, stall_size: Vector2, frame_color: Color, awning_color: Color) -> void:
 	# Counter / table
 	_add_rect(frame_color, pos, stall_size)

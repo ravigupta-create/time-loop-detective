@@ -26,6 +26,8 @@ var _interaction_text: String = ""
 var _minimap_npc_positions: Dictionary = {}  # npc_id -> Vector2 (normalized 0-1)
 var _minimap_player_pos: Vector2 = Vector2(0.5, 0.5)
 var _clock_warning: bool = false
+var _weather_label: Label
+var _weather_icon: Label
 
 # Style colors
 const COLOR_HUD_BG: Color = Color(0.06, 0.04, 0.02, 0.75)
@@ -65,6 +67,7 @@ func _ready() -> void:
 
 	_build_location_display()
 	_build_loop_clock_display()
+	_build_weather_display()
 	_build_interaction_prompt()
 	_build_minimap()
 	_build_notification_panel()
@@ -84,6 +87,8 @@ func _ready() -> void:
 	EventBus.dialogue_ended.connect(_on_dialogue_ended)
 	EventBus.notebook_opened.connect(_on_notebook_opened)
 	EventBus.notebook_closed.connect(_on_notebook_closed)
+	EventBus.weather_changed.connect(_on_weather_changed)
+	EventBus.conspiracy_milestone_reached.connect(_on_milestone_reached)
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +178,37 @@ func _build_loop_clock_display() -> void:
 	_progress_bar.add_theme_stylebox_override("fill", bar_fill)
 
 	container.add_child(_progress_bar)
+
+
+func _build_weather_display() -> void:
+	# Top-center: weather indicator
+	var weather_bg := Panel.new()
+	weather_bg.position = Vector2(280, 4)
+	weather_bg.size = Vector2(70, 18)
+	var wbg_style := StyleBoxFlat.new()
+	wbg_style.bg_color = COLOR_HUD_BG
+	wbg_style.set_border_width_all(1)
+	wbg_style.border_color = COLOR_HUD_BORDER
+	wbg_style.set_corner_radius_all(2)
+	wbg_style.set_content_margin_all(2)
+	weather_bg.add_theme_stylebox_override("panel", wbg_style)
+	add_child(weather_bg)
+
+	_weather_icon = Label.new()
+	_weather_icon.text = "SUN"
+	_weather_icon.position = Vector2(3, 1)
+	_weather_icon.size = Vector2(24, 14)
+	_weather_icon.add_theme_font_size_override("font_size", 7)
+	_weather_icon.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
+	weather_bg.add_child(_weather_icon)
+
+	_weather_label = Label.new()
+	_weather_label.text = "Clear"
+	_weather_label.position = Vector2(26, 1)
+	_weather_label.size = Vector2(40, 14)
+	_weather_label.add_theme_font_size_override("font_size", 7)
+	_weather_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	weather_bg.add_child(_weather_label)
 
 
 func _build_interaction_prompt() -> void:
@@ -297,8 +333,52 @@ func _on_time_tick(current_time: float) -> void:
 		warning_fill.set_corner_radius_all(1)
 		_progress_bar.add_theme_stylebox_override("fill", warning_fill)
 
-	# Refresh minimap periodically
+	# Recalculate NPC positions from schedules for minimap
+	_update_minimap_npc_positions(current_time)
+
+	# Update player dot position based on current location
+	var loc_positions: Dictionary = {
+		Enums.LocationID.APARTMENT_COMPLEX: Vector2(0.15, 0.2),
+		Enums.LocationID.CAFE_ROSETTA: Vector2(0.35, 0.15),
+		Enums.LocationID.BAR_CROSSROADS: Vector2(0.55, 0.25),
+		Enums.LocationID.RIVERSIDE_PARK: Vector2(0.8, 0.12),
+		Enums.LocationID.CITY_HALL: Vector2(0.5, 0.5),
+		Enums.LocationID.BACK_ALLEY: Vector2(0.3, 0.6),
+		Enums.LocationID.POLICE_STATION: Vector2(0.65, 0.55),
+		Enums.LocationID.DOCKS: Vector2(0.9, 0.75),
+		Enums.LocationID.STREET_MARKET: Vector2(0.4, 0.8),
+		Enums.LocationID.HOTEL_MARLOW: Vector2(0.15, 0.85),
+	}
+	_minimap_player_pos = loc_positions.get(_current_location_id, Vector2(0.5, 0.5))
+
+	# Refresh minimap
 	_minimap_canvas.queue_redraw()
+
+
+func _update_minimap_npc_positions(current_time: float) -> void:
+	var loc_positions: Dictionary = {
+		Enums.LocationID.APARTMENT_COMPLEX: Vector2(0.15, 0.2),
+		Enums.LocationID.CAFE_ROSETTA: Vector2(0.35, 0.15),
+		Enums.LocationID.BAR_CROSSROADS: Vector2(0.55, 0.25),
+		Enums.LocationID.RIVERSIDE_PARK: Vector2(0.8, 0.12),
+		Enums.LocationID.CITY_HALL: Vector2(0.5, 0.5),
+		Enums.LocationID.BACK_ALLEY: Vector2(0.3, 0.6),
+		Enums.LocationID.POLICE_STATION: Vector2(0.65, 0.55),
+		Enums.LocationID.DOCKS: Vector2(0.9, 0.75),
+		Enums.LocationID.STREET_MARKET: Vector2(0.4, 0.8),
+		Enums.LocationID.HOTEL_MARLOW: Vector2(0.15, 0.85),
+	}
+	var all_ids := [
+		Constants.NPC_FRANK, Constants.NPC_MARIA, Constants.NPC_HALE,
+		Constants.NPC_IRIS, Constants.NPC_VICTOR, Constants.NPC_PENNY,
+		Constants.NPC_ELEANOR, Constants.NPC_NINA, Constants.NPC_MAYOR,
+		Constants.NPC_TOMMY
+	]
+	for npc_id in all_ids:
+		var schedule := ScheduleEvaluator.get_schedule_for_npc(npc_id)
+		var eval_result := ScheduleEvaluator.evaluate(npc_id, current_time, schedule)
+		var npc_loc: int = eval_result.get("location", -1)
+		_minimap_npc_positions[npc_id] = loc_positions.get(npc_loc, Vector2(0.5, 0.5))
 
 
 func _on_player_entered_location(location_id: int) -> void:
@@ -388,6 +468,38 @@ func _on_notebook_opened() -> void:
 
 func _on_notebook_closed() -> void:
 	modulate = Color.WHITE
+
+
+func _on_weather_changed(weather_type: int) -> void:
+	match weather_type:
+		Enums.WeatherType.CLEAR:
+			_weather_icon.text = "SUN"
+			_weather_icon.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
+			_weather_label.text = "Clear"
+		Enums.WeatherType.OVERCAST:
+			_weather_icon.text = "CLD"
+			_weather_icon.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+			_weather_label.text = "Overcast"
+		Enums.WeatherType.RAIN:
+			_weather_icon.text = "RAN"
+			_weather_icon.add_theme_color_override("font_color", Color(0.4, 0.5, 0.7))
+			_weather_label.text = "Rain"
+		Enums.WeatherType.FOG:
+			_weather_icon.text = "FOG"
+			_weather_icon.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+			_weather_label.text = "Fog"
+
+
+func _on_milestone_reached(milestone_id: String, _tier: int) -> void:
+	match milestone_id:
+		"familiar_faces":
+			_queue_notification("Milestone: Familiar Faces", "clue")
+		"following_money":
+			_queue_notification("Milestone: Following the Money", "clue")
+		"the_device":
+			_queue_notification("Milestone: The Device", "clue")
+		"the_truth":
+			_queue_notification("Milestone: The Truth", "clue")
 
 
 # ---------------------------------------------------------------------------

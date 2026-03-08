@@ -64,7 +64,11 @@ func _trigger_loop_reset() -> void:
 	GameState.current_loop = loop_number
 	EventBus.loop_reset.emit(loop_number)
 	# TransitionManager handles the visual reset, then calls start_loop
-	TransitionManager.play_loop_reset()
+	if is_instance_valid(TransitionManager) and TransitionManager.has_method("play_loop_reset"):
+		TransitionManager.play_loop_reset()
+	else:
+		# Fallback: restart loop directly
+		start_loop()
 
 
 func get_time_of_day() -> int:

@@ -1,5 +1,6 @@
 extends Node
-## JSON serialization to user://detective_save.json with checksum validation.
+## JSON serialization to user://detective_save.json with checksum validation
+## and backup save system.
 
 const SAVE_VERSION: int = 1
 
@@ -13,6 +14,9 @@ func _on_loop_reset(_loop_number: int) -> void:
 
 
 func save_game() -> void:
+	# Create backup of existing save before overwriting
+	_backup_save()
+
 	var data := {
 		"version": SAVE_VERSION,
 		"timestamp": Time.get_unix_time_from_system(),
@@ -31,13 +35,26 @@ func save_game() -> void:
 
 
 func load_game() -> bool:
-	if not FileAccess.file_exists(Constants.SAVE_PATH):
-		print("[SaveManager] No save file found")
+	# Try primary save first
+	if _try_load(Constants.SAVE_PATH):
+		return true
+
+	# Fall back to backup if primary is corrupted
+	print("[SaveManager] Primary save failed, trying backup...")
+	if _try_load(Constants.SAVE_BACKUP_PATH):
+		print("[SaveManager] Loaded from backup save")
+		return true
+
+	print("[SaveManager] No valid save found")
+	return false
+
+
+func _try_load(path: String) -> bool:
+	if not FileAccess.file_exists(path):
 		return false
 
-	var file := FileAccess.open(Constants.SAVE_PATH, FileAccess.READ)
+	var file := FileAccess.open(path, FileAccess.READ)
 	if not file:
-		print("[SaveManager] Failed to open save file")
 		return false
 
 	var json_string := file.get_as_text()
@@ -46,17 +63,17 @@ func load_game() -> bool:
 	var json := JSON.new()
 	var error := json.parse(json_string)
 	if error != OK:
-		print("[SaveManager] Failed to parse save file: ", json.get_error_message())
+		print("[SaveManager] Failed to parse %s: %s" % [path, json.get_error_message()])
 		return false
 
 	var data: Dictionary = json.data
 	if not _validate_save(data):
-		print("[SaveManager] Save file validation failed")
+		print("[SaveManager] Validation failed for %s" % path)
 		return false
 
 	GameState.load_save_data(data.get("game_state", {}))
 	EventBus.game_loaded.emit()
-	print("[SaveManager] Game loaded - Loop %d" % GameState.current_loop)
+	print("[SaveManager] Game loaded from %s - Loop %d" % [path, GameState.current_loop])
 	return true
 
 
@@ -73,11 +90,28 @@ func _validate_save(data: Dictionary) -> bool:
 	return verify_string.md5_text() == stored_checksum
 
 
+func _backup_save() -> void:
+	if not FileAccess.file_exists(Constants.SAVE_PATH):
+		return
+	var source := FileAccess.open(Constants.SAVE_PATH, FileAccess.READ)
+	if not source:
+		return
+	var content := source.get_as_text()
+	source.close()
+
+	var backup := FileAccess.open(Constants.SAVE_BACKUP_PATH, FileAccess.WRITE)
+	if backup:
+		backup.store_string(content)
+		backup.close()
+
+
 func delete_save() -> void:
 	if FileAccess.file_exists(Constants.SAVE_PATH):
 		DirAccess.remove_absolute(Constants.SAVE_PATH)
-		print("[SaveManager] Save file deleted")
+	if FileAccess.file_exists(Constants.SAVE_BACKUP_PATH):
+		DirAccess.remove_absolute(Constants.SAVE_BACKUP_PATH)
+	print("[SaveManager] Save files deleted")
 
 
 func has_save() -> bool:
-	return FileAccess.file_exists(Constants.SAVE_PATH)
+	return FileAccess.file_exists(Constants.SAVE_PATH) or FileAccess.file_exists(Constants.SAVE_BACKUP_PATH)

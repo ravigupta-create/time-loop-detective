@@ -108,6 +108,12 @@ func _try_interact() -> void:
 		elif target.is_in_group("evidence"):
 			if target.has_method("collect"):
 				target.collect()
+		elif target.is_in_group("interactables"):
+			if target.has_meta("clue_data"):
+				var clue: Dictionary = target.get_meta("clue_data")
+				GameState.add_clue(clue.get("id", ""), clue)
+				EventBus.sfx_requested.emit("evidence")
+				target.queue_free()
 		elif target.is_in_group("doors"):
 			if target.has_method("get_destination"):
 				var dest: String = target.get_destination()
@@ -226,7 +232,7 @@ func _on_interaction_area_body_exited(body: Node2D) -> void:
 
 
 func _on_interaction_area_area_entered(area: Area2D) -> void:
-	if area.is_in_group("doors") or area.is_in_group("evidence"):
+	if area.is_in_group("doors") or area.is_in_group("evidence") or area.is_in_group("interactables"):
 		nearby_interactables.append(area)
 
 

@@ -55,6 +55,19 @@ signal transition_started(transition_type: String)
 signal transition_midpoint()
 signal transition_completed()
 
+# Weather signals
+signal weather_changed(weather_type: int)
+
+# NPC interaction signals
+signal npc_npc_interaction_started(npc_a: String, npc_b: String, interaction_type: String)
+signal npc_npc_interaction_ended(npc_a: String, npc_b: String)
+
+# Endgame signals
+signal endgame_step_completed(step_id: String)
+signal endgame_started()
+signal endgame_victory()
+signal conspiracy_milestone_reached(milestone_id: String, tier: int)
+
 # Game flow
 signal game_started()
 signal game_paused()

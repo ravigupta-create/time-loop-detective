@@ -112,6 +112,20 @@ func _setup_ambient() -> void:
 	EventBus.ambience_change_requested.emit("bar")
 
 
+func _setup_interactables() -> void:
+	var ts := Constants.TILE_SIZE
+	# Hidden note behind jukebox
+	_add_interactable("jukebox_note", "Note Behind Jukebox",
+		"A taped note reads: 'Tuesday pickups moved to midnight. Use back door only. - V'",
+		Enums.ClueCategory.BEHAVIORAL, 2,
+		Vector2(6 * ts + 4, 17 * ts + 4), Color(0.9, 0.8, 0.5, 0.5))
+	# Bar ledger under counter
+	_add_interactable("bar_ledger", "Bar Ledger",
+		"A second set of books hidden under the counter. Income entries far exceed what a bar this size could make. Large deposits marked 'consulting fees.'",
+		Enums.ClueCategory.FINANCIAL, 3,
+		Vector2(18 * ts, 3 * ts + 8), Color(0.5, 0.7, 1.0, 0.5))
+
+
 func _add_rect(color: Color, pos: Vector2, rect_size: Vector2, z: int = -5) -> void:
 	var r := ColorRect.new()
 	r.color = color
