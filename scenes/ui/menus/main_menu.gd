@@ -383,18 +383,20 @@ func _show_difficulty_select() -> void:
 
 	var descriptions := [
 		"Easy — Longer loops, more clues, auto lie detection",
-		"Medium — The intended experience (Recommended)",
-		"Hard — Shorter loops, more crimes, no lie hints",
+		"Normal — The original experience (Recommended)",
+		"Medium — Slightly shorter loops, tighter pacing",
+		"Hard — Short loops, more crimes, no lie hints",
 		"Extreme — Minimal time, maximum chaos"
 	]
 	var colors := [
 		Color(0.3, 0.8, 0.3),   # Green
+		Color(0.92, 0.87, 0.78), # White/cream
 		Color(0.85, 0.72, 0.20), # Gold
 		Color(0.9, 0.5, 0.2),   # Orange
 		Color(0.9, 0.2, 0.15),  # Red
 	]
 
-	for i in 4:
+	for i in 5:
 		var btn := _create_menu_button(descriptions[i])
 		btn.add_theme_color_override("font_color", colors[i])
 		btn.add_theme_color_override("font_hover_color", colors[i].lightened(0.3))

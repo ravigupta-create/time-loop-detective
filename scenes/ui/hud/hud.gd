@@ -145,6 +145,7 @@ func _build_location_display() -> void:
 	# Difficulty badge — right of the location panel
 	var diff_colors := [
 		Color(0.3, 0.8, 0.3),   # Easy = green
+		Color(0.92, 0.87, 0.78), # Normal = white/cream
 		Color(0.85, 0.72, 0.20), # Medium = gold
 		Color(0.9, 0.5, 0.2),   # Hard = orange
 		Color(0.9, 0.2, 0.15),  # Extreme = red
@@ -155,7 +156,7 @@ func _build_location_display() -> void:
 	var diff_style := StyleBoxFlat.new()
 	diff_style.bg_color = COLOR_HUD_BG
 	diff_style.set_border_width_all(1)
-	diff_style.border_color = diff_colors[clampi(GameState.difficulty, 0, 3)]
+	diff_style.border_color = diff_colors[clampi(GameState.difficulty, 0, 4)]
 	diff_style.set_corner_radius_all(2)
 	diff_style.set_content_margin_all(1)
 	diff_bg.add_theme_stylebox_override("panel", diff_style)
@@ -166,7 +167,7 @@ func _build_location_display() -> void:
 	_difficulty_badge.position = Vector2(2, 0)
 	_difficulty_badge.size = Vector2(50, 12)
 	_difficulty_badge.add_theme_font_size_override("font_size", 7)
-	_difficulty_badge.add_theme_color_override("font_color", diff_colors[clampi(GameState.difficulty, 0, 3)])
+	_difficulty_badge.add_theme_color_override("font_color", diff_colors[clampi(GameState.difficulty, 0, 4)])
 	_difficulty_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	diff_bg.add_child(_difficulty_badge)
 
