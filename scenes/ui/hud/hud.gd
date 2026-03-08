@@ -36,6 +36,10 @@ var _crime_alert_label: Label
 var _crime_active: bool = false
 var _minimap_legend_panel: Panel
 var _minimap_legend_visible: bool = false
+var _conspiracy_bar: ProgressBar
+var _conspiracy_label: Label
+var _discovery_counter: Label
+var _discoveries_this_loop: int = 0
 
 # Style colors
 const COLOR_HUD_BG: Color = Color(0.06, 0.04, 0.02, 0.75)
@@ -82,11 +86,14 @@ func _ready() -> void:
 	_build_interaction_prompt()
 	_build_minimap()
 	_build_minimap_legend()
+	_build_conspiracy_meter()
+	_build_discovery_counter()
 	_build_notification_panel()
 	_setup_notification_timer()
 
 	# Connect EventBus signals
 	EventBus.time_tick.connect(_on_time_tick)
+	EventBus.conspiracy_progress_changed.connect(_on_conspiracy_changed)
 	EventBus.player_entered_location.connect(_on_player_entered_location)
 	EventBus.clue_discovered.connect(_on_clue_discovered)
 	EventBus.notification_queued.connect(_on_notification_queued)
@@ -295,6 +302,59 @@ func _build_crime_alert() -> void:
 	_crime_alert_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.15))
 	_crime_alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_crime_alert_panel.add_child(_crime_alert_label)
+
+
+func _build_conspiracy_meter() -> void:
+	# Bottom-left: conspiracy progress meter
+	var bg := Panel.new()
+	bg.position = Vector2(4, 310)
+	bg.size = Vector2(120, 26)
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = COLOR_HUD_BG
+	bg_style.set_border_width_all(1)
+	bg_style.border_color = COLOR_HUD_BORDER
+	bg_style.set_corner_radius_all(2)
+	bg_style.set_content_margin_all(2)
+	bg.add_theme_stylebox_override("panel", bg_style)
+	add_child(bg)
+
+	_conspiracy_label = Label.new()
+	_conspiracy_label.text = "CONSPIRACY"
+	_conspiracy_label.position = Vector2(4, 1)
+	_conspiracy_label.size = Vector2(112, 10)
+	_conspiracy_label.add_theme_font_size_override("font_size", 6)
+	_conspiracy_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_conspiracy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bg.add_child(_conspiracy_label)
+
+	_conspiracy_bar = ProgressBar.new()
+	_conspiracy_bar.position = Vector2(4, 14)
+	_conspiracy_bar.size = Vector2(112, 8)
+	_conspiracy_bar.min_value = 0.0
+	_conspiracy_bar.max_value = 100.0
+	_conspiracy_bar.value = GameState.conspiracy_progress
+	_conspiracy_bar.show_percentage = false
+	var bar_bg := StyleBoxFlat.new()
+	bar_bg.bg_color = COLOR_PROGRESS_BG
+	bar_bg.set_corner_radius_all(1)
+	_conspiracy_bar.add_theme_stylebox_override("background", bar_bg)
+	var bar_fill := StyleBoxFlat.new()
+	bar_fill.bg_color = Color(0.6, 0.3, 0.7)
+	bar_fill.set_corner_radius_all(1)
+	_conspiracy_bar.add_theme_stylebox_override("fill", bar_fill)
+	bg.add_child(_conspiracy_bar)
+
+
+func _build_discovery_counter() -> void:
+	# Bottom-left above conspiracy: discoveries this loop
+	_discovery_counter = Label.new()
+	_discovery_counter.text = ""
+	_discovery_counter.position = Vector2(4, 295)
+	_discovery_counter.size = Vector2(120, 12)
+	_discovery_counter.add_theme_font_size_override("font_size", 7)
+	_discovery_counter.add_theme_color_override("font_color", Color(0.85, 0.72, 0.20, 0.8))
+	_discovery_counter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_discovery_counter)
 
 
 func _build_minimap_legend() -> void:
@@ -521,6 +581,8 @@ func _on_clue_discovered(clue_id: String) -> void:
 	_queue_notification("Clue found: %s" % clue_title, "clue")
 	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
 	_play_clue_sparkle()
+	_discoveries_this_loop += 1
+	_discovery_counter.text = "%d new this loop" % _discoveries_this_loop
 
 
 func _on_notification_queued(text: String, icon: String) -> void:
@@ -547,12 +609,31 @@ func _on_loop_reset(loop_number: int) -> void:
 	_follow_panel.visible = false
 	_crime_active = false
 	_crime_alert_panel.visible = false
+	_discoveries_this_loop = 0
+	_discovery_counter.text = ""
 
 	# Reset progress bar fill color
 	var normal_fill := StyleBoxFlat.new()
 	normal_fill.bg_color = COLOR_PROGRESS_FILL
 	normal_fill.set_corner_radius_all(1)
 	_progress_bar.add_theme_stylebox_override("fill", normal_fill)
+
+
+func _on_conspiracy_changed(new_value: int) -> void:
+	if _conspiracy_bar:
+		_conspiracy_bar.value = new_value
+		# Change fill color by tier
+		var fill := StyleBoxFlat.new()
+		fill.set_corner_radius_all(1)
+		if new_value >= 75:
+			fill.bg_color = Color(0.9, 0.2, 0.15)  # Red
+		elif new_value >= 50:
+			fill.bg_color = Color(0.8, 0.3, 0.6)  # Hot pink
+		elif new_value >= 25:
+			fill.bg_color = Color(0.6, 0.3, 0.7)  # Purple
+		else:
+			fill.bg_color = Color(0.45, 0.38, 0.55)  # Dim purple
+		_conspiracy_bar.add_theme_stylebox_override("fill", fill)
 
 
 func _on_loop_ending_soon(seconds_remaining: float) -> void:

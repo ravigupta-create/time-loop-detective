@@ -16,11 +16,33 @@ var _victory_layer: CanvasLayer = null
 
 
 func _ready() -> void:
+	_setup_crt_overlay()
+
 	# Create main menu
 	_show_main_menu()
 
 	EventBus.game_started.connect(_on_game_started)
 	EventBus.game_loaded.connect(_on_game_loaded)
+
+
+func _setup_crt_overlay() -> void:
+	var crt_layer := CanvasLayer.new()
+	crt_layer.layer = 99
+	crt_layer.name = "CRTLayer"
+	add_child(crt_layer)
+
+	var crt_rect := ColorRect.new()
+	crt_rect.color = Color(0, 0, 0, 0)  # Transparent — shader reads screen
+	crt_rect.size = Vector2(640, 360)
+	crt_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var shader := load("res://shaders/crt_scanline.gdshader") as Shader
+	if shader:
+		var mat := ShaderMaterial.new()
+		mat.shader = shader
+		crt_rect.material = mat
+
+	crt_layer.add_child(crt_rect)
 
 
 func _show_main_menu() -> void:

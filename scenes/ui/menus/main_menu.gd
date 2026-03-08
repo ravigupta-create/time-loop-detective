@@ -39,6 +39,9 @@ const COLOR_SLIDER_BG: Color = Color(0.15, 0.12, 0.08)
 const COLOR_SLIDER_FILL: Color = Color(0.45, 0.38, 0.22)
 
 
+var _clock_canvas: _ClockDraw
+var _version_label: Label
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -46,8 +49,11 @@ func _ready() -> void:
 	_init_particles()
 	_build_background()
 	_build_title()
+	_build_clock_visual()
 	_build_buttons()
 	_build_settings_panel()
+	_build_version_label()
+	_play_intro_animation()
 
 
 func _process(_delta: float) -> void:
@@ -55,6 +61,8 @@ func _process(_delta: float) -> void:
 	_update_particles(_delta)
 	if _bg_canvas:
 		_bg_canvas.queue_redraw()
+	if _clock_canvas:
+		_clock_canvas.queue_redraw()
 
 
 # ---------------------------------------------------------------------------
@@ -142,8 +150,8 @@ func _build_title() -> void:
 
 func _build_buttons() -> void:
 	_button_container = VBoxContainer.new()
-	_button_container.position = Vector2(240, 140)
-	_button_container.size = Vector2(160, 140)
+	_button_container.position = Vector2(240, 248)
+	_button_container.size = Vector2(160, 100)
 	_button_container.add_theme_constant_override("separation", 6)
 	add_child(_button_container)
 
@@ -398,6 +406,65 @@ func _on_minimap_toggled(enabled: bool) -> void:
 
 
 # ---------------------------------------------------------------------------
+# Clock Visual & Intro Animation
+# ---------------------------------------------------------------------------
+
+func _build_clock_visual() -> void:
+	_clock_canvas = _ClockDraw.new()
+	_clock_canvas.position = Vector2(286, 170)
+	_clock_canvas.size = Vector2(68, 68)
+	_clock_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_clock_canvas.modulate.a = 0.0
+	add_child(_clock_canvas)
+	move_child(_clock_canvas, _button_container.get_index())
+
+
+func _build_version_label() -> void:
+	_version_label = Label.new()
+	_version_label.text = "v1.0  |  100% Procedural  |  Free Forever"
+	_version_label.position = Vector2(0, 345)
+	_version_label.size = Vector2(640, 12)
+	_version_label.add_theme_font_size_override("font_size", 6)
+	_version_label.add_theme_color_override("font_color", Color(0.35, 0.32, 0.28))
+	_version_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_version_label)
+
+
+func _play_intro_animation() -> void:
+	# Start everything invisible
+	_title_label.modulate.a = 0.0
+	_subtitle_label.modulate.a = 0.0
+	_button_container.modulate.a = 0.0
+	_version_label.modulate.a = 0.0
+
+	# Find the decorative line
+	var line: ColorRect = null
+	for child in get_children():
+		if child is ColorRect and child.size == Vector2(160, 1):
+			line = child
+			break
+	if line:
+		line.modulate.a = 0.0
+
+	var tween := create_tween()
+	# Title fades in
+	tween.tween_property(_title_label, "modulate:a", 1.0, 0.8).set_delay(0.3)
+	# Line sweeps in
+	if line:
+		tween.tween_property(line, "modulate:a", 1.0, 0.4).set_delay(0.1)
+	# Subtitle
+	tween.tween_property(_subtitle_label, "modulate:a", 1.0, 0.6).set_delay(0.1)
+	# Clock
+	tween.tween_property(_clock_canvas, "modulate:a", 0.35, 0.8).set_delay(0.1)
+	# Buttons slide up from below
+	_button_container.position.y += 20
+	tween.tween_property(_button_container, "modulate:a", 1.0, 0.5).set_delay(0.1)
+	tween.parallel().tween_property(_button_container, "position:y", 248.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# Version
+	tween.tween_property(_version_label, "modulate:a", 1.0, 0.5).set_delay(0.2)
+
+
+# ---------------------------------------------------------------------------
 # Animated Background
 # ---------------------------------------------------------------------------
 
@@ -426,3 +493,44 @@ class _BackgroundCanvas extends Control:
 						Color(0.85, 0.72, 0.20, line_alpha),
 						1.0
 					)
+
+
+class _ClockDraw extends Control:
+	## Animated clock face for the main menu — ticking hands, gold accents.
+	func _draw() -> void:
+		var center := size / 2.0
+		var radius := minf(size.x, size.y) * 0.45
+		var gold := Color(0.85, 0.72, 0.20)
+		var gold_dim := Color(0.85, 0.72, 0.20, 0.3)
+		var t := Time.get_ticks_msec() / 1000.0
+
+		# Outer ring
+		draw_arc(center, radius, 0, TAU, 48, gold, 1.5)
+		# Inner ring
+		draw_arc(center, radius * 0.9, 0, TAU, 48, gold_dim, 0.5)
+
+		# Hour marks
+		for i in 12:
+			var angle := float(i) / 12.0 * TAU - PI / 2.0
+			var from := center + Vector2(cos(angle), sin(angle)) * radius * 0.78
+			var to := center + Vector2(cos(angle), sin(angle)) * radius * 0.9
+			var w := 1.5 if i % 3 == 0 else 0.8
+			draw_line(from, to, gold, w)
+
+		# Minute hand (spins slowly)
+		var min_angle := fmod(t * 0.1, TAU) - PI / 2.0
+		var min_end := center + Vector2(cos(min_angle), sin(min_angle)) * radius * 0.7
+		draw_line(center, min_end, gold, 1.0)
+
+		# Second hand (ticks every second)
+		var sec_angle := fmod(t, 60.0) / 60.0 * TAU - PI / 2.0
+		var sec_end := center + Vector2(cos(sec_angle), sin(sec_angle)) * radius * 0.8
+		draw_line(center, sec_end, Color(0.9, 0.2, 0.15, 0.8), 0.5)
+
+		# Center dot
+		draw_circle(center, 2.0, gold)
+
+		# Pulsing glow ring
+		var pulse := 0.5 + 0.5 * sin(t * 2.0)
+		draw_arc(center, radius + 2.0 + pulse * 3.0, 0, TAU, 32,
+			Color(0.85, 0.72, 0.20, 0.1 * (1.0 - pulse)), 1.0)

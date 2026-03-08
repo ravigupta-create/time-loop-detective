@@ -225,6 +225,14 @@ func start_dialogue(npc_id: String, dialogue_tree: Dictionary) -> void:
 	_choice_container.visible = false
 	_continue_indicator.visible = false
 
+	# Slide-up entry animation
+	_dialogue_panel.position.y = 260.0
+	_dialogue_panel.modulate.a = 0.0
+	var entry_tween := create_tween()
+	entry_tween.set_parallel(true)
+	entry_tween.tween_property(_dialogue_panel, "position:y", 240.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	entry_tween.tween_property(_dialogue_panel, "modulate:a", 1.0, 0.15)
+
 	# Pause game world
 	get_tree().paused = true
 

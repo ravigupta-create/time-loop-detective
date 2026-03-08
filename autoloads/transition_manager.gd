@@ -84,7 +84,42 @@ func play_loop_reset() -> void:
 	_tween.tween_callback(func():
 		EventBus.transition_midpoint.emit()
 	)
-	_tween.tween_interval(0.8)
+	# Show loop number during black screen
+	_tween.tween_callback(func():
+		var loop_label := Label.new()
+		loop_label.name = "LoopText"
+		loop_label.text = "Loop %d" % (GameState.current_loop + 1)
+		loop_label.position = Vector2(0, 150)
+		loop_label.size = Vector2(640, 30)
+		loop_label.add_theme_font_size_override("font_size", 16)
+		loop_label.add_theme_color_override("font_color", Color(0.85, 0.72, 0.20))
+		loop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		loop_label.modulate.a = 0.0
+		_canvas_layer.add_child(loop_label)
+
+		var hint_label := Label.new()
+		hint_label.name = "HintText"
+		hint_label.text = "The truth is still out there..."
+		hint_label.position = Vector2(0, 178)
+		hint_label.size = Vector2(640, 16)
+		hint_label.add_theme_font_size_override("font_size", 8)
+		hint_label.add_theme_color_override("font_color", Color(0.6, 0.55, 0.48))
+		hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint_label.modulate.a = 0.0
+		_canvas_layer.add_child(hint_label)
+
+		var txt_tween := create_tween()
+		txt_tween.tween_property(loop_label, "modulate:a", 1.0, 0.3)
+		txt_tween.parallel().tween_property(hint_label, "modulate:a", 1.0, 0.3).set_delay(0.2)
+		txt_tween.tween_interval(0.8)
+		txt_tween.tween_property(loop_label, "modulate:a", 0.0, 0.3)
+		txt_tween.parallel().tween_property(hint_label, "modulate:a", 0.0, 0.3)
+		txt_tween.tween_callback(func():
+			loop_label.queue_free()
+			hint_label.queue_free()
+		)
+	)
+	_tween.tween_interval(1.6)
 	_tween.tween_callback(func():
 		_color_rect.color = Color(0, 0, 0, 1)
 		TimeManager.start_loop()
