@@ -38,6 +38,7 @@ var _minimap_legend_panel: Panel
 var _minimap_legend_visible: bool = false
 var _conspiracy_bar: ProgressBar
 var _conspiracy_label: Label
+var _difficulty_badge: Label
 var _discovery_counter: Label
 var _discoveries_this_loop: int = 0
 
@@ -141,6 +142,34 @@ func _build_location_display() -> void:
 	_location_label.clip_text = true
 	bg.add_child(_location_label)
 
+	# Difficulty badge — right of the location panel
+	var diff_colors := [
+		Color(0.3, 0.8, 0.3),   # Easy = green
+		Color(0.85, 0.72, 0.20), # Medium = gold
+		Color(0.9, 0.5, 0.2),   # Hard = orange
+		Color(0.9, 0.2, 0.15),  # Extreme = red
+	]
+	var diff_bg := Panel.new()
+	diff_bg.position = Vector2(168, 4)
+	diff_bg.size = Vector2(54, 14)
+	var diff_style := StyleBoxFlat.new()
+	diff_style.bg_color = COLOR_HUD_BG
+	diff_style.set_border_width_all(1)
+	diff_style.border_color = diff_colors[clampi(GameState.difficulty, 0, 3)]
+	diff_style.set_corner_radius_all(2)
+	diff_style.set_content_margin_all(1)
+	diff_bg.add_theme_stylebox_override("panel", diff_style)
+	add_child(diff_bg)
+
+	_difficulty_badge = Label.new()
+	_difficulty_badge.text = Constants.DIFFICULTY_NAMES.get(GameState.difficulty, "Medium")
+	_difficulty_badge.position = Vector2(2, 0)
+	_difficulty_badge.size = Vector2(50, 12)
+	_difficulty_badge.add_theme_font_size_override("font_size", 7)
+	_difficulty_badge.add_theme_color_override("font_color", diff_colors[clampi(GameState.difficulty, 0, 3)])
+	_difficulty_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	diff_bg.add_child(_difficulty_badge)
+
 
 func _build_loop_clock_display() -> void:
 	# Top-right: HBoxContainer with loop number, clock, progress bar
@@ -235,8 +264,8 @@ func _build_weather_display() -> void:
 
 func _build_clue_counter() -> void:
 	var bg := Panel.new()
-	bg.position = Vector2(170, 4)
-	bg.size = Vector2(70, 18)
+	bg.position = Vector2(226, 4)
+	bg.size = Vector2(50, 18)
 	var bg_style := StyleBoxFlat.new()
 	bg_style.bg_color = COLOR_HUD_BG
 	bg_style.set_border_width_all(1)
@@ -247,9 +276,9 @@ func _build_clue_counter() -> void:
 	add_child(bg)
 
 	_clue_counter = Label.new()
-	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
+	_clue_counter.text = "%d" % GameState.discovered_clues.size()
 	_clue_counter.position = Vector2(4, 1)
-	_clue_counter.size = Vector2(62, 14)
+	_clue_counter.size = Vector2(42, 14)
 	_clue_counter.add_theme_font_size_override("font_size", 8)
 	_clue_counter.add_theme_color_override("font_color", Color(0.85, 0.72, 0.20))
 	_clue_counter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -508,7 +537,9 @@ func _on_time_tick(current_time: float) -> void:
 	_progress_bar.value = TimeManager.get_progress()
 
 	# Check warning state
-	if current_time >= Constants.FINAL_COUNTDOWN_START and not _clock_warning:
+	var loop_dur: float = Constants.get_dp("loop_duration", GameState.difficulty) as float
+	var countdown_start := loop_dur - (Constants.get_dp("countdown_offset", GameState.difficulty) as float)
+	if current_time >= countdown_start and not _clock_warning:
 		_clock_warning = true
 		_clock_label.add_theme_color_override("font_color", COLOR_CLOCK_WARNING)
 		# Change progress bar fill to red
@@ -579,7 +610,7 @@ func _on_clue_discovered(clue_id: String) -> void:
 	var clue: Dictionary = GameState.discovered_clues.get(clue_id, {})
 	var clue_title: String = clue.get("title", clue_id)
 	_queue_notification("Clue found: %s" % clue_title, "clue")
-	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
+	_clue_counter.text = "%d" % GameState.discovered_clues.size()
 	_play_clue_sparkle()
 	_discoveries_this_loop += 1
 	_discovery_counter.text = "%d new this loop" % _discoveries_this_loop
@@ -605,7 +636,7 @@ func _on_loop_reset(loop_number: int) -> void:
 	_progress_bar.value = 0.0
 	_clock_warning = false
 	_clock_label.add_theme_color_override("font_color", COLOR_CLOCK_NORMAL)
-	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
+	_clue_counter.text = "%d" % GameState.discovered_clues.size()
 	_follow_panel.visible = false
 	_crime_active = false
 	_crime_alert_panel.visible = false

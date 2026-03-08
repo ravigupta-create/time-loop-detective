@@ -16,6 +16,10 @@ func _ready() -> void:
 	EventBus.game_resumed.connect(_on_game_resumed)
 
 
+func _get_loop_duration() -> float:
+	return Constants.get_dp("loop_duration", GameState.difficulty)
+
+
 func _process(delta: float) -> void:
 	if not is_running:
 		return
@@ -31,11 +35,12 @@ func _process(delta: float) -> void:
 		_check_time_of_day()
 
 	# Countdown warning
-	if current_time >= Constants.FINAL_COUNTDOWN_START:
-		EventBus.loop_ending_soon.emit(Constants.LOOP_DURATION - current_time)
+	var countdown_start := _get_loop_duration() - Constants.get_dp("countdown_offset", GameState.difficulty)
+	if current_time >= countdown_start:
+		EventBus.loop_ending_soon.emit(_get_loop_duration() - current_time)
 
 	# Loop reset
-	if current_time >= Constants.LOOP_DURATION:
+	if current_time >= _get_loop_duration():
 		_trigger_loop_reset()
 
 
@@ -91,8 +96,8 @@ func get_time_of_day() -> int:
 
 
 func get_formatted_time() -> String:
-	# Map 0-600s to 6:00 AM - 11:59 PM (18 game hours)
-	var game_hours := 6.0 + (current_time / Constants.LOOP_DURATION) * 18.0
+	# Map 0-loop_duration to 6:00 AM - 11:59 PM (18 game hours)
+	var game_hours := 6.0 + (current_time / _get_loop_duration()) * 18.0
 	var hours := int(game_hours)
 	var minutes := int((game_hours - hours) * 60.0)
 	var period := "AM" if hours < 12 else "PM"
@@ -103,7 +108,7 @@ func get_formatted_time() -> String:
 
 
 func get_progress() -> float:
-	return current_time / Constants.LOOP_DURATION
+	return current_time / _get_loop_duration()
 
 
 func _check_time_of_day() -> void:

@@ -20,6 +20,9 @@ var intervention_history: Array[Dictionary] = [] # [{loop, crime_id, type, outco
 var conspiracy_progress: int = 0
 var conspiracy_milestones: Array[String] = [] # unlocked story beats
 
+# Difficulty
+var difficulty: int = 1  # 0=Easy, 1=Medium, 2=Hard, 3=Extreme
+
 # Loop tracking
 var current_loop: int = 1
 var total_play_time: float = 0.0
@@ -128,7 +131,8 @@ func _update_conspiracy_progress() -> void:
 		if conn["type"] == Enums.ConnectionType.CONSPIRACY or \
 		   conn["type"] == Enums.ConnectionType.FINANCIAL:
 			conspiracy_conns += 1
-	var target := mini(conspiracy_conns * 5, Constants.CONSPIRACY_MAX)
+	var mult: int = Constants.get_dp("conspiracy_mult", difficulty)
+	var target := mini(conspiracy_conns * mult, Constants.CONSPIRACY_MAX)
 	if target > conspiracy_progress:
 		advance_conspiracy(target - conspiracy_progress)
 
@@ -190,6 +194,7 @@ func get_save_data() -> Dictionary:
 		"intervention_history": intervention_history,
 		"conspiracy_progress": conspiracy_progress,
 		"conspiracy_milestones": conspiracy_milestones,
+		"difficulty": difficulty,
 		"current_loop": current_loop,
 		"total_play_time": total_play_time,
 		"timeline_entries": timeline_entries,
@@ -222,6 +227,7 @@ func load_save_data(data: Dictionary) -> void:
 	conspiracy_milestones = []
 	for m in data.get("conspiracy_milestones", []):
 		conspiracy_milestones.append(m)
+	difficulty = data.get("difficulty", 1)
 	current_loop = data.get("current_loop", 1)
 	total_play_time = data.get("total_play_time", 0.0)
 	timeline_entries = []

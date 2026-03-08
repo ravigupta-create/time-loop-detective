@@ -7,6 +7,7 @@ var _bg_canvas: _BackgroundCanvas
 var _title_label: Label
 var _subtitle_label: Label
 var _button_container: VBoxContainer
+var _difficulty_container: VBoxContainer
 var _settings_panel: Panel
 var _continue_button: Button
 
@@ -352,7 +353,87 @@ func _add_slider_setting(label_text: String, y_pos: float, initial_value: float,
 
 func _on_new_game() -> void:
 	EventBus.sfx_requested.emit("interact")
+	_show_difficulty_select()
+
+
+func _show_difficulty_select() -> void:
+	_button_container.visible = false
+	if _clock_canvas:
+		_clock_canvas.visible = false
+
+	if _difficulty_container:
+		_difficulty_container.queue_free()
+
+	_difficulty_container = VBoxContainer.new()
+	_difficulty_container.position = Vector2(170, 140)
+	_difficulty_container.size = Vector2(300, 200)
+	_difficulty_container.add_theme_constant_override("separation", 5)
+	add_child(_difficulty_container)
+
+	var title_lbl := Label.new()
+	title_lbl.text = "SELECT DIFFICULTY"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 12)
+	title_lbl.add_theme_color_override("font_color", COLOR_TITLE)
+	_difficulty_container.add_child(title_lbl)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 4)
+	_difficulty_container.add_child(spacer)
+
+	var descriptions := [
+		"Easy — Longer loops, more clues, auto lie detection",
+		"Medium — The intended experience (Recommended)",
+		"Hard — Shorter loops, more crimes, no lie hints",
+		"Extreme — Minimal time, maximum chaos"
+	]
+	var colors := [
+		Color(0.3, 0.8, 0.3),   # Green
+		Color(0.85, 0.72, 0.20), # Gold
+		Color(0.9, 0.5, 0.2),   # Orange
+		Color(0.9, 0.2, 0.15),  # Red
+	]
+
+	for i in 4:
+		var btn := _create_menu_button(descriptions[i])
+		btn.add_theme_color_override("font_color", colors[i])
+		btn.add_theme_color_override("font_hover_color", colors[i].lightened(0.3))
+		btn.custom_minimum_size = Vector2(300, 28)
+		btn.pressed.connect(_on_difficulty_chosen.bind(i))
+		_difficulty_container.add_child(btn)
+
+	var back_spacer := Control.new()
+	back_spacer.custom_minimum_size = Vector2(0, 4)
+	_difficulty_container.add_child(back_spacer)
+
+	var back_btn := _create_menu_button("Back")
+	back_btn.custom_minimum_size = Vector2(300, 24)
+	back_btn.pressed.connect(_on_difficulty_back)
+	_difficulty_container.add_child(back_btn)
+
+	# Fade in
+	_difficulty_container.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(_difficulty_container, "modulate:a", 1.0, 0.25)
+
+
+func _on_difficulty_chosen(level: int) -> void:
+	EventBus.sfx_requested.emit("interact")
+	GameState.difficulty = level
+	if _difficulty_container:
+		_difficulty_container.queue_free()
+		_difficulty_container = null
 	EventBus.game_started.emit()
+
+
+func _on_difficulty_back() -> void:
+	EventBus.sfx_requested.emit("interact")
+	if _difficulty_container:
+		_difficulty_container.queue_free()
+		_difficulty_container = null
+	_button_container.visible = true
+	if _clock_canvas:
+		_clock_canvas.visible = true
 
 
 func _on_continue() -> void:

@@ -1,9 +1,31 @@
 class_name Constants
 
+# Difficulty
+enum Difficulty { EASY, MEDIUM, HARD, EXTREME }
+const DIFFICULTY_NAMES := {0: "Easy", 1: "Medium", 2: "Hard", 3: "Extreme"}
+const DIFFICULTY_PARAMS := {
+	"loop_duration":     [720.0, 600.0, 480.0, 360.0],
+	"countdown_offset":  [120.0, 60.0, 45.0, 30.0],
+	"min_crimes":        [1, 2, 3, 4],
+	"max_crimes":        [2, 3, 4, 5],
+	"conspiracy_mult":   [8, 5, 3, 2],
+	"tier_1":            [15, 25, 35, 45],
+	"tier_2":            [35, 50, 65, 75],
+	"tier_3":            [55, 75, 85, 92],
+	"tier_4":            [70, 90, 95, 100],
+	"crime_jitter":      [15.0, 30.0, 60.0, 90.0],
+	"max_evidence":      [99, 99, 2, 2],
+	"auto_lie_detect":   [true, true, false, false],
+	"adapt_shift":       [30.0, 60.0, 90.0, 120.0],
+}
+
+static func get_dp(key: String, diff: int) -> Variant:
+	return DIFFICULTY_PARAMS[key][clampi(diff, 0, 3)]
+
 # Time
-const LOOP_DURATION: float = 600.0 # 10 minutes in seconds
+const LOOP_DURATION: float = 600.0 # 10 minutes in seconds (default/fallback)
 const TIME_TICK_INTERVAL: float = 1.0
-const FINAL_COUNTDOWN_START: float = 540.0 # Last 60 seconds
+const FINAL_COUNTDOWN_START: float = 540.0 # Last 60 seconds (default/fallback)
 
 # Player
 const PLAYER_SPEED: float = 120.0
