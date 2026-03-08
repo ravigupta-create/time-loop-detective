@@ -110,7 +110,7 @@ func _setup_interactables() -> void:
 	# Receipt behind counter showing large payment
 	_add_interactable("cafe_receipt", "Large Payment Receipt",
 		"A crumpled receipt behind the counter: '$5,000 cash payment from V. Crane - catering services.' That's a lot of catering.",
-		Enums.ClueCategory.FINANCIAL, 2,
+		Enums.ClueCategory.DOCUMENT, 2,
 		Vector2(16 * ts, 2 * ts + 8), Color(0.9, 0.85, 0.5, 0.5))
 	# Hidden note in tip jar
 	_add_interactable("tip_jar_note", "Note in Tip Jar",

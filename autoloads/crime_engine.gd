@@ -274,7 +274,7 @@ func _on_crime_intervened(crime_id: String, intervention_type: int) -> void:
 
 			Enums.InterventionType.CALL_POLICE:
 				# Outcome depends on whether Hale is honest or corrupt
-				var hale_corrupt := GameState.conspiracy_progress >= 50 or \
+				var hale_corrupt: bool = GameState.conspiracy_progress >= 50 or \
 					Enums.PersonalityTrait.DECEITFUL in NPCDatabase.get_npc_data(Constants.NPC_HALE).get("personality_traits", [])
 				if hale_corrupt:
 					# Hale tips off the conspirators — perpetrator gets advance warning

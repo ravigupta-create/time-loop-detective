@@ -117,12 +117,12 @@ func _setup_interactables() -> void:
 	# Discarded item in bushes
 	_add_interactable("discarded_gloves", "Discarded Gloves",
 		"A pair of black leather gloves stuffed under a bush. They smell faintly of chemicals and have dark stains.",
-		Enums.ClueCategory.PHYSICAL, 2,
+		Enums.ClueCategory.PHYSICAL_EVIDENCE, 2,
 		Vector2(6 * ts + 4, 4 * ts + 8), Color(0.3, 0.3, 0.3, 0.5))
 	# Graffiti on bench
 	_add_interactable("bench_graffiti", "Carved Bench Message",
 		"Scratched into the park bench: 'THE MAYOR KNOWS. LOOP 847.' Someone else is aware of the time loop.",
-		Enums.ClueCategory.CONSPIRACY, 3,
+		Enums.ClueCategory.DEDUCTION, 3,
 		Vector2(16 * ts + 4, 14 * ts + 4), Color(0.8, 0.6, 0.3, 0.5))
 
 

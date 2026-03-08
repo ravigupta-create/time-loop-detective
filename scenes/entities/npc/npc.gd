@@ -137,7 +137,7 @@ func _process_fleeing(_delta: float) -> void:
 	# Move away from player
 	var players := get_tree().get_nodes_in_group("player")
 	if players.size() > 0:
-		var away := (global_position - players[0].global_position).normalized()
+		var away: Vector2 = (global_position - players[0].global_position).normalized()
 		velocity = away * _speed * 1.5
 		_facing = away
 	else:

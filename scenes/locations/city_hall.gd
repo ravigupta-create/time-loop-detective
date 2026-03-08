@@ -156,17 +156,17 @@ func _setup_interactables() -> void:
 	# Filing cabinet with suspicious documents
 	_add_interactable("land_transfer_docs", "Land Transfer Documents",
 		"Buried in the filing cabinet: unsigned land transfer agreements predated by months. All properties transferred to Crane Development Group at below-market prices.",
-		Enums.ClueCategory.FINANCIAL, 3,
+		Enums.ClueCategory.DOCUMENT, 3,
 		Vector2(4 * ts, 12 * ts), Color(0.9, 0.85, 0.6, 0.5))
 	# Shredded documents in waste bin
 	_add_interactable("shredded_docs", "Partially Shredded Documents",
 		"Fragments of a shredded memo: '...device maintenance sch... ...basement access restricted to... ...energy readings abnorm...'",
-		Enums.ClueCategory.CONSPIRACY, 3,
+		Enums.ClueCategory.DEDUCTION, 3,
 		Vector2(34 * ts, 6 * ts), Color(0.8, 0.8, 0.8, 0.5))
 	# Phone call log on reception desk
 	_add_interactable("call_log", "Reception Call Log",
 		"Today's call log shows 14 calls between the Mayor's office and 'V. Crane - Private' in just 3 hours.",
-		Enums.ClueCategory.BEHAVIORAL, 2,
+		Enums.ClueCategory.OBSERVATION, 2,
 		Vector2(18 * ts, 17 * ts + 4), Color(0.6, 0.8, 0.9, 0.5))
 
 

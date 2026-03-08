@@ -96,7 +96,7 @@ func _load_location(location_id: int) -> void:
 	EventBus.player_entered_location.emit(location_id)
 
 	# Request location ambience
-	var loc_name := Constants.LOCATION_NAMES.get(location_id, "unknown").to_lower().replace(" ", "_")
+	var loc_name: String = Constants.LOCATION_NAMES.get(location_id, "unknown").to_lower().replace(" ", "_")
 	EventBus.ambience_change_requested.emit(loc_name)
 
 

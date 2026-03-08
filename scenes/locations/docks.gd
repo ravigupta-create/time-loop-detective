@@ -140,12 +140,12 @@ func _setup_interactables() -> void:
 	# Shipping manifest on crate
 	_add_interactable("shipping_manifest", "Shipping Manifest",
 		"A manifest nailed to a crate: 'CONTENTS: Laboratory Equipment. RECIPIENT: City Hall Basement. SENDER: [REDACTED]. HANDLE WITH EXTREME CARE.'",
-		Enums.ClueCategory.CONSPIRACY, 3,
+		Enums.ClueCategory.DEDUCTION, 3,
 		Vector2(10 * ts + 4, 7 * ts), Color(0.9, 0.85, 0.6, 0.5))
 	# Scuff marks and blood
 	_add_interactable("dock_scuff_marks", "Scuff Marks",
 		"Deep scuff marks on the dock planks, as if something heavy was dragged. Dark stains that could be blood trail toward the water's edge.",
-		Enums.ClueCategory.PHYSICAL, 2,
+		Enums.ClueCategory.PHYSICAL_EVIDENCE, 2,
 		Vector2(24 * ts, 12 * ts), Color(0.5, 0.2, 0.2, 0.4))
 
 

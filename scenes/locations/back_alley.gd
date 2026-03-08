@@ -123,12 +123,12 @@ func _setup_interactables() -> void:
 	# Discarded burner phone near dumpster
 	_add_interactable("burner_phone", "Discarded Phone",
 		"A cheap burner phone in the dumpster. Last text sent: 'Package delivered to dock 4. Clean up the loose end tonight.'",
-		Enums.ClueCategory.PHYSICAL, 3,
+		Enums.ClueCategory.PHYSICAL_EVIDENCE, 3,
 		Vector2(7 * ts, 6 * ts + 8), Color(0.4, 0.4, 0.5, 0.5))
 	# Suspicious markings on wall
 	_add_interactable("wall_markings", "Wall Markings",
 		"Chalk marks on the brick wall - a series of tally marks and dates. Each date corresponds to a reported 'accident' in the police blotter.",
-		Enums.ClueCategory.BEHAVIORAL, 2,
+		Enums.ClueCategory.OBSERVATION, 2,
 		Vector2(14 * ts, 12 * ts + 4), Color(0.9, 0.9, 0.8, 0.4))
 
 

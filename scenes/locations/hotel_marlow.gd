@@ -173,12 +173,12 @@ func _setup_interactables() -> void:
 	# Guest register with suspicious entries
 	_add_interactable("guest_register", "Hotel Guest Register",
 		"The guest register shows Room 103 booked under 'N. Volkov' with a note: 'Extended stay - paid cash, no ID on file.' Room 101 is booked to 'V. Crane - DO NOT DISTURB.'",
-		Enums.ClueCategory.BEHAVIORAL, 2,
+		Enums.ClueCategory.OBSERVATION, 2,
 		Vector2(11 * ts, 17 * ts + 4), Color(0.7, 0.6, 0.4, 0.5))
 	# Key card near elevator
 	_add_interactable("spare_keycard", "Unmarked Key Card",
 		"An unmarked key card on the floor near the elevator. The magnetic strip is worn from heavy use. A small sticker reads 'B-ACCESS' - basement access?",
-		Enums.ClueCategory.PHYSICAL, 2,
+		Enums.ClueCategory.PHYSICAL_EVIDENCE, 2,
 		Vector2(35 * ts, 12 * ts), Color(0.5, 0.7, 1.0, 0.5))
 
 

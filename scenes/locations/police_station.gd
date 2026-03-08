@@ -140,12 +140,12 @@ func _setup_interactables() -> void:
 	# Evidence log with discrepancies
 	_add_interactable("evidence_log_gap", "Evidence Room Log",
 		"The evidence room sign-in log has pages torn out. Remaining entries show Hale accessed Room 7 twelve times last month - far more than any other officer.",
-		Enums.ClueCategory.BEHAVIORAL, 3,
+		Enums.ClueCategory.OBSERVATION, 3,
 		Vector2(5 * ts, 15 * ts), Color(0.6, 0.8, 0.9, 0.5))
 	# Hidden compartment in Hale's desk
 	_add_interactable("hale_desk_compartment", "Hidden Desk Compartment",
 		"A false bottom in Hale's desk drawer. Inside: a list of names with dollar amounts and the note 'Monthly - DO NOT FILE.'",
-		Enums.ClueCategory.FINANCIAL, 3,
+		Enums.ClueCategory.DOCUMENT, 3,
 		Vector2(33 * ts, 5 * ts), Color(0.5, 0.4, 0.3, 0.5))
 
 

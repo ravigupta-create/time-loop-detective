@@ -105,12 +105,12 @@ func _setup_interactables() -> void:
 	# Threatening letter in mailbox
 	_add_interactable("threatening_letter", "Threatening Letter",
 		"An unsigned letter stuffed in a mailbox: 'Stop asking questions or you'll end up like the others.'",
-		Enums.ClueCategory.PHYSICAL, 2,
+		Enums.ClueCategory.PHYSICAL_EVIDENCE, 2,
 		Vector2(12 * ts, 18 * ts + 8), Color(0.9, 0.85, 0.5, 0.5))
 	# Notice board with construction plans
 	_add_interactable("construction_notice", "Construction Notice",
 		"A posted notice: 'CRANE DEVELOPMENT GROUP - Compulsory purchase order pending for this block.'",
-		Enums.ClueCategory.FINANCIAL, 1,
+		Enums.ClueCategory.DOCUMENT, 1,
 		Vector2(20 * ts, 14 * ts - 4), Color(0.9, 0.9, 0.8, 0.5))
 
 
