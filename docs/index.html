@@ -1,235 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-<title>Time Loop Detective</title>
-<meta name="description" content="A 2D detective game set in a 10-minute time loop. Investigate crimes, interrogate NPCs, and unravel a conspiracy.">
-<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png">
-<link rel="apple-touch-icon" href="index.apple-touch-icon.png">
-<link rel="manifest" href="index.manifest.json">
-<!-- Preload critical assets for faster loading -->
-<link rel="preload" href="index.js" as="script">
-<link rel="preload" href="index.wasm" as="fetch" crossorigin>
-<link rel="preload" href="index.pck" as="fetch" crossorigin>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;touch-action:none;background:#0a0a12;color:#e0e0e0;font-family:'Segoe UI','Noto Sans',Arial,sans-serif}
-#canvas{display:block;position:absolute;top:0;left:0;width:100%;height:100%}
-#canvas:focus{outline:none}
-
-/* Loading screen */
-#loading-screen{position:fixed;inset:0;z-index:100;background:#0a0a12;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.6s}
-#loading-screen.hidden{opacity:0;pointer-events:none}
-.load-title{font-size:2.4rem;font-weight:700;letter-spacing:0.05em;color:#c9a84c;text-shadow:0 0 20px rgba(201,168,76,0.4);margin-bottom:0.3rem}
-.load-subtitle{font-size:0.95rem;color:#8888aa;margin-bottom:2rem;letter-spacing:0.15em;text-transform:uppercase}
-.progress-wrap{width:min(400px,80vw);height:6px;background:#1a1a2e;border-radius:3px;overflow:hidden;position:relative}
-.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#c9a84c,#e8d48b);border-radius:3px;transition:width 0.2s}
-.progress-text{margin-top:0.7rem;font-size:0.8rem;color:#666688;letter-spacing:0.1em}
-.load-tip{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);font-size:0.8rem;color:#555570;max-width:500px;text-align:center;line-height:1.5}
-
-/* Controls overlay */
-#controls-overlay{position:fixed;inset:0;z-index:200;background:rgba(10,10,18,0.92);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s}
-#controls-overlay.show{display:flex;opacity:1}
-.controls-panel{background:#12121e;border:1px solid #2a2a40;border-radius:12px;padding:2.5rem 3rem;max-width:520px;width:90vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
-.controls-panel h2{font-size:1.5rem;color:#c9a84c;margin-bottom:0.3rem;text-align:center}
-.controls-panel .sub{font-size:0.8rem;color:#666688;text-align:center;margin-bottom:1.5rem}
-.ctrl-section{margin-bottom:1.2rem}
-.ctrl-section h3{font-size:0.85rem;color:#8888aa;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.5rem;border-bottom:1px solid #1e1e30;padding-bottom:0.3rem}
-.ctrl-row{display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0}
-.ctrl-row .key{display:inline-flex;gap:4px}
-.ctrl-row .key kbd{background:#1a1a2e;border:1px solid #2a2a40;border-radius:4px;padding:2px 8px;font-size:0.8rem;color:#c9a84c;font-family:inherit;min-width:28px;text-align:center}
-.ctrl-row .action{color:#bbb;font-size:0.85rem}
-.ctrl-close{display:block;margin:1.5rem auto 0;background:#c9a84c;color:#0a0a12;border:none;border-radius:6px;padding:0.6rem 2rem;font-size:0.9rem;font-weight:600;cursor:pointer;letter-spacing:0.05em}
-.ctrl-close:hover{background:#e8d48b}
-
-/* Controls button (floating, in-game) */
-#controls-btn{position:fixed;top:12px;right:12px;z-index:50;background:rgba(18,18,30,0.7);border:1px solid #2a2a40;border-radius:6px;color:#c9a84c;font-size:0.75rem;padding:5px 12px;cursor:pointer;letter-spacing:0.08em;backdrop-filter:blur(4px);transition:background 0.2s}
-#controls-btn:hover{background:rgba(40,40,60,0.8)}
-
-/* Godot status (error notices) */
-#status{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;visibility:hidden;z-index:90}
-#status-splash{display:none}
-#status-progress{display:none}
-#status-notice{display:none;background:#5b3943;border-radius:0.5rem;border:1px solid #9b3943;color:#e0e0e0;font-family:inherit;line-height:1.3;margin:0 2rem;overflow:hidden;padding:1rem;text-align:center;z-index:1}
-</style>
-</head>
-<body>
-<canvas id="canvas" tabindex="0">Your browser does not support the canvas tag.</canvas>
-<noscript>Your browser does not support JavaScript.</noscript>
-
-<!-- Loading Screen -->
-<div id="loading-screen">
-	<div class="load-title">TIME LOOP DETECTIVE</div>
-	<div class="load-subtitle">Loading Investigation</div>
-	<div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-	<div class="progress-text" id="progress-text">Initializing...</div>
-	<div class="load-tip">Tip: You have 10 minutes each loop. Knowledge carries over — use it wisely.</div>
-</div>
-
-<!-- Controls Button -->
-<button id="controls-btn" onclick="toggleControls()">CONTROLS</button>
-
-<!-- Controls Overlay -->
-<div id="controls-overlay">
-<div class="controls-panel">
-	<h2>Controls</h2>
-	<p class="sub">Time Loop Detective</p>
-
-	<div class="ctrl-section">
-		<h3>Movement</h3>
-		<div class="ctrl-row"><span class="key"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span class="action">Move</span></div>
-		<div class="ctrl-row"><span class="key"><kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span><span class="action">Move (alternate)</span></div>
-	</div>
-
-	<div class="ctrl-section">
-		<h3>Interaction</h3>
-		<div class="ctrl-row"><span class="key"><kbd>E</kbd></span><span class="action">Interact / Talk to NPC</span></div>
-		<div class="ctrl-row"><span class="key"><kbd>F</kbd></span><span class="action">Follow NPC</span></div>
-		<div class="ctrl-row"><span class="key"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></span><span class="action">Select dialogue choice</span></div>
-	</div>
-
-	<div class="ctrl-section">
-		<h3>Investigation</h3>
-		<div class="ctrl-row"><span class="key"><kbd>Tab</kbd></span><span class="action">Open Notebook</span></div>
-		<div class="ctrl-row"><span class="key"><kbd>M</kbd></span><span class="action">Open Map</span></div>
-	</div>
-
-	<div class="ctrl-section">
-		<h3>System</h3>
-		<div class="ctrl-row"><span class="key"><kbd>Esc</kbd></span><span class="action">Pause Menu</span></div>
-	</div>
-
-	<div class="ctrl-section">
-		<h3>How to Play</h3>
-		<p style="font-size:0.82rem;color:#999;line-height:1.6">
-			You're trapped in a 10-minute time loop. Each loop, explore the town, talk to NPCs, collect clues, and investigate crimes. Your knowledge persists between loops. Uncover the conspiracy, prevent crimes, and find a way to break the loop.
-		</p>
-	</div>
-
-	<button class="ctrl-close" onclick="toggleControls()">GOT IT</button>
-</div>
-</div>
-
-<!-- Godot status (for error notices) -->
-<div id="status">
-	<img id="status-splash" class="show-image--false" src="index.png" alt="">
-	<progress id="status-progress"></progress>
-	<div id="status-notice"></div>
-</div>
-
-<script>
-function toggleControls(){
-	const o=document.getElementById('controls-overlay');
-	o.classList.toggle('show');
-	if(!o.classList.contains('show')){document.getElementById('canvas').focus()}
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>Time Loop Detective</title>
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
 }
-document.addEventListener('keydown',function(e){
-	if(e.key==='F1'){e.preventDefault();toggleControls()}
-	if(e.key==='Escape'&&document.getElementById('controls-overlay').classList.contains('show')){toggleControls()}
-});
-</script>
-<script src="index.js"></script>
-<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":531704,"index.wasm":37685705},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+
+body {
+	color: white;
+	background-color: black;
+	overflow: hidden;
+	touch-action: none;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status, #status-splash, #status-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+#status, #status-splash {
+	top: 0;
+	bottom: 0;
+}
+
+#status {
+	background-color: #242424;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+}
+
+#status-splash {
+	max-height: 100%;
+	max-width: 100%;
+	margin: auto;
+}
+
+#status-splash.show-image--false {
+	display: none;
+}
+
+#status-splash.fullsize--true {
+	height: 100%;
+	width: 100%;
+	object-fit: contain;
+}
+
+#status-splash.use-filter--false {
+	image-rendering: pixelated;
+}
+
+#status-progress, #status-notice {
+	display: none;
+}
+
+#status-progress {
+	bottom: 10%;
+	width: 50%;
+	margin: 0 auto;
+}
+
+#status-notice {
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	line-height: 1.3;
+	margin: 0 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}
+		</style>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+<link rel="manifest" href="index.manifest.json">
+
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Your browser does not support JavaScript.
+		</noscript>
+
+		<div id="status">
+			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
+			<progress id="status-progress"></progress>
+			<div id="status-notice"></div>
+		</div>
+
+		<script src="index.js"></script>
+		<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":543544,"index.wasm":37685705},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
-(function(){
-	const loadingScreen = document.getElementById('loading-screen');
-	const progressBar = document.getElementById('progress-bar');
-	const progressText = document.getElementById('progress-text');
+(function () {
 	const statusOverlay = document.getElementById('status');
 	const statusProgress = document.getElementById('status-progress');
 	const statusNotice = document.getElementById('status-notice');
-	const controlsBtn = document.getElementById('controls-btn');
 
-	controlsBtn.style.display = 'none';
 	let initializing = true;
 	let statusMode = '';
 
-	const tips = [
-		"Tip: You have 10 minutes each loop. Knowledge carries over — use it wisely.",
-		"Tip: Talk to everyone. NPCs reveal different things at different times.",
-		"Tip: Check your notebook (Tab) to review collected clues.",
-		"Tip: Some NPCs lie. Cross-reference their stories with evidence.",
-		"Tip: Crimes happen on a schedule. Learn the patterns to intervene.",
-		"Tip: The conspiracy runs deep. Connect the dots on your evidence board.",
-		"Tip: Weather changes each loop and affects NPC behavior.",
-		"Tip: Look for interactable objects — they glow faintly."
-	];
-	document.querySelector('.load-tip').textContent = tips[Math.floor(Math.random()*tips.length)];
-
-	function setStatusMode(mode){
-		if(statusMode===mode||!initializing)return;
-		if(mode==='hidden'){
-			statusOverlay.remove();
-			loadingScreen.classList.add('hidden');
-			controlsBtn.style.display = 'block';
-			setTimeout(function(){loadingScreen.remove()},600);
-			initializing=false;
-			document.getElementById('canvas').focus();
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
 			return;
 		}
-		statusOverlay.style.visibility='visible';
-		statusProgress.style.display=mode==='progress'?'block':'none';
-		statusNotice.style.display=mode==='notice'?'block':'none';
-		statusMode=mode;
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
 	}
 
-	function setStatusNotice(text){
-		while(statusNotice.lastChild)statusNotice.removeChild(statusNotice.lastChild);
-		text.split('\n').forEach(function(line){
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = text.split('\n');
+		lines.forEach((line) => {
 			statusNotice.appendChild(document.createTextNode(line));
 			statusNotice.appendChild(document.createElement('br'));
 		});
 	}
 
-	function displayFailureNotice(err){
+	function displayFailureNotice(err) {
 		console.error(err);
-		if(err instanceof Error)setStatusNotice(err.message);
-		else if(typeof err==='string')setStatusNotice(err);
-		else setStatusNotice('An unknown error occurred.');
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('An unknown error occurred.');
+		}
 		setStatusMode('notice');
-		loadingScreen.classList.add('hidden');
-		initializing=false;
+		initializing = false;
 	}
 
-	const missing=Engine.getMissingFeatures({threads:GODOT_THREADS_ENABLED});
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
 
-	if(missing.length!==0){
-		if(GODOT_CONFIG['serviceWorker']&&GODOT_CONFIG['ensureCrossOriginIsolationHeaders']&&'serviceWorker' in navigator){
-			let swPromise;
-			try{swPromise=navigator.serviceWorker.getRegistration()}
-			catch(e){swPromise=Promise.reject(new Error('Service worker registration failed.'))}
-			Promise.race([
-				swPromise.then(function(reg){
-					if(reg!=null)return Promise.reject(new Error('Service worker already exists.'));
-					return reg;
-				}).then(function(){return engine.installServiceWorker()}),
-				new Promise(function(r){setTimeout(r,2000)})
-			]).then(function(){window.location.reload()}).catch(function(e){console.error('SW error:',e)});
-		}else{
-			displayFailureNotice('Error\nThe following features required to run Godot projects on the Web are missing:\n'+missing.join('\n'));
-		}
-	}else{
-		setStatusMode('progress');
-		progressText.textContent='Downloading game data...';
-		engine.startGame({
-			'onProgress':function(current,total){
-				if(current>0&&total>0){
-					const pct=Math.round((current/total)*100);
-					progressBar.style.width=pct+'%';
-					progressText.textContent='Loading... '+pct+'%';
-					if(pct>80)progressText.textContent='Almost ready... '+pct+'%';
-				}else{
-					progressBar.style.width='10%';
-					progressText.textContent='Downloading...';
-				}
+	if (missing.length !== 0) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+			let serviceWorkerRegistrationPromise;
+			try {
+				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
+			} catch (err) {
+				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
 			}
-		}).then(function(){setStatusMode('hidden')},displayFailureNotice);
+			// There's a chance that installing the service worker would fix the issue
+			Promise.race([
+				serviceWorkerRegistrationPromise.then((registration) => {
+					if (registration != null) {
+						return Promise.reject(new Error('Service worker already exists.'));
+					}
+					return registration;
+				}).then(() => engine.installServiceWorker()),
+				// For some reason, `getRegistration()` can stall
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
+			]).then(() => {
+				// Reload if there was no error.
+				window.location.reload();
+			}).catch((err) => {
+				console.error('Error while registering service worker:', err);
+			});
+		} else {
+			// Display the message as usual
+			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
+			displayFailureNotice(missingMsg + missing.join('\n'));
+		}
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					statusProgress.value = current;
+					statusProgress.max = total;
+				} else {
+					statusProgress.removeAttribute('value');
+					statusProgress.removeAttribute('max');
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+		}, displayFailureNotice);
 	}
 }());
-</script>
-</body>
+		</script>
+	</body>
 </html>
+

@@ -315,17 +315,27 @@ func show_choices(choices: Array) -> void:
 			btn.add_theme_stylebox_override("normal", lock_style)
 			btn.add_theme_stylebox_override("disabled", lock_style)
 		else:
-			btn.text = "> %s" % choice_text
+			btn.text = "\u25B8 %s" % choice_text
 			btn.add_theme_color_override("font_color", COLOR_TEXT)
 			var choice_style := StyleBoxFlat.new()
 			choice_style.bg_color = COLOR_CHOICE_NORMAL
-			choice_style.set_corner_radius_all(1)
-			choice_style.set_content_margin_all(2)
+			choice_style.set_corner_radius_all(2)
+			choice_style.content_margin_left = 6
+			choice_style.content_margin_right = 4
+			choice_style.content_margin_top = 3
+			choice_style.content_margin_bottom = 3
+			choice_style.border_width_left = 3
+			choice_style.border_color = Color(0.4, 0.35, 0.25)
 			btn.add_theme_stylebox_override("normal", choice_style)
 			var hover_style := StyleBoxFlat.new()
 			hover_style.bg_color = COLOR_CHOICE_HOVER
-			hover_style.set_corner_radius_all(1)
-			hover_style.set_content_margin_all(2)
+			hover_style.set_corner_radius_all(2)
+			hover_style.content_margin_left = 6
+			hover_style.content_margin_right = 4
+			hover_style.content_margin_top = 3
+			hover_style.content_margin_bottom = 3
+			hover_style.border_width_left = 3
+			hover_style.border_color = Color(0.85, 0.72, 0.20)
 			btn.add_theme_stylebox_override("hover", hover_style)
 			btn.pressed.connect(_on_choice_selected.bind(choice_id))
 
@@ -425,9 +435,9 @@ func _on_typewriter_tick() -> void:
 	_visible_chars += 1
 	_text_label.visible_characters = _visible_chars
 
-	# Play subtle tick sound every few characters
-	if _visible_chars % 3 == 0:
-		EventBus.sfx_requested.emit("interact")
+	# Play subtle typewriter click every 8 characters
+	if _visible_chars % 8 == 0:
+		EventBus.sfx_requested.emit("typewriter")
 
 	if _visible_chars >= _current_text.length():
 		_typewriter_timer.stop()
@@ -552,8 +562,8 @@ func _open_present_evidence() -> void:
 			 current_npc_id in clue.get("related_npcs", []))
 
 		var clue_btn := Button.new()
-		clue_btn.custom_minimum_size = Vector2(580, 20)
-		clue_btn.add_theme_font_size_override("font_size", 7)
+		clue_btn.custom_minimum_size = Vector2(580, 22)
+		clue_btn.add_theme_font_size_override("font_size", 8)
 		clue_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 		if is_contradicting:
@@ -683,8 +693,8 @@ func _show_ask_about_panel() -> void:
 		var clue: Dictionary = GameState.discovered_clues[clue_id]
 		var btn := Button.new()
 		btn.text = clue.get("title", clue_id)
-		btn.custom_minimum_size = Vector2(580, 18)
-		btn.add_theme_font_size_override("font_size", 7)
+		btn.custom_minimum_size = Vector2(580, 22)
+		btn.add_theme_font_size_override("font_size", 8)
 		btn.add_theme_color_override("font_color", COLOR_TEXT)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		var btn_style := StyleBoxFlat.new()

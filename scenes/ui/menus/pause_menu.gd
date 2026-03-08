@@ -7,12 +7,12 @@ var _button_container: VBoxContainer
 var _is_open: bool = false
 
 const COLOR_OVERLAY := Color(0, 0, 0, 0.6)
-const COLOR_PANEL := Color(0.08, 0.06, 0.1, 0.95)
-const COLOR_BORDER := Color(0.3, 0.25, 0.4)
-const COLOR_TITLE := Color(0.9, 0.2, 0.3)
-const COLOR_BTN := Color(0.12, 0.1, 0.15)
-const COLOR_BTN_HOVER := Color(0.2, 0.15, 0.25)
-const COLOR_BTN_TEXT := Color(0.85, 0.8, 0.9)
+const COLOR_PANEL := Color(0.1, 0.08, 0.06, 0.95)
+const COLOR_BORDER := Color(0.45, 0.38, 0.28)
+const COLOR_TITLE := Color(0.85, 0.72, 0.20)
+const COLOR_BTN := Color(0.18, 0.16, 0.12)
+const COLOR_BTN_HOVER := Color(0.25, 0.22, 0.16)
+const COLOR_BTN_TEXT := Color(0.92, 0.87, 0.78)
 
 
 func _ready() -> void:
@@ -49,7 +49,7 @@ func _ready() -> void:
 	var info := Label.new()
 	info.text = "Loop %d" % GameState.current_loop
 	info.add_theme_font_size_override("font_size", 8)
-	info.add_theme_color_override("font_color", Color(0.6, 0.55, 0.7))
+	info.add_theme_color_override("font_color", Color(0.6, 0.55, 0.48))
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.position = Vector2(0, 32)
 	info.size = Vector2(200, 14)

@@ -19,6 +19,14 @@ var is_following: bool = false
 var nearby_interactables: Array[Node] = []
 var nearby_npcs: Array[Node] = []
 
+# Footstep SFX
+var _footstep_timer: float = 0.0
+const FOOTSTEP_INTERVAL: float = 0.35
+
+# Screen shake
+var _shake_intensity: float = 0.0
+var _shake_timer: float = 0.0
+
 
 func _ready() -> void:
 	EventBus.dialogue_started.connect(_on_dialogue_started)
@@ -28,6 +36,9 @@ func _ready() -> void:
 	EventBus.transition_started.connect(func(_t): is_in_menu = true)
 	EventBus.transition_completed.connect(func(): is_in_menu = false)
 	EventBus.loop_reset.connect(_on_loop_reset)
+	EventBus.crime_started.connect(func(_id, _t): _shake(3.0, 0.3))
+	EventBus.clue_discovered.connect(func(_id): _shake(1.5, 0.15))
+	EventBus.loop_ending_soon.connect(func(secs): if secs <= 10.0: _shake(1.0, 0.1))
 
 	# Set camera smoothing
 	camera.position_smoothing_enabled = true
@@ -48,6 +59,43 @@ func _physics_process(delta: float) -> void:
 	_update_animation()
 	_update_raycast()
 
+	# Footstep SFX
+	if velocity.length() > 10:
+		_footstep_timer += delta
+		if _footstep_timer >= FOOTSTEP_INTERVAL:
+			_footstep_timer = 0.0
+			EventBus.sfx_requested.emit("footstep")
+	else:
+		_footstep_timer = 0.0
+
+	# Screen shake
+	if _shake_timer > 0:
+		_shake_timer -= delta
+		var offset := Vector2(randf_range(-_shake_intensity, _shake_intensity), randf_range(-_shake_intensity, _shake_intensity))
+		camera.offset = offset
+		_shake_intensity *= 0.9
+	elif camera.offset != Vector2.ZERO:
+		camera.offset = Vector2.ZERO
+
+	# Contextual HUD prompts
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("update_interaction_target"):
+		var target := _get_best_interaction_target()
+		if target:
+			if target.is_in_group("npcs"):
+				var npc_name := target.get_npc_id().replace("_", " ").capitalize() if target.has_method("get_npc_id") else ""
+				hud.update_interaction_target("npc", npc_name)
+			elif target.is_in_group("evidence"):
+				var ev_name: String = target.get_meta("evidence_name", "") if target.has_meta("evidence_name") else ""
+				hud.update_interaction_target("evidence", ev_name)
+			elif target.is_in_group("doors"):
+				var dest: String = target.get_destination() if target.has_method("get_destination") else ""
+				hud.update_interaction_target("door", dest)
+			elif target.is_in_group("interactables"):
+				hud.update_interaction_target("object", "")
+		else:
+			hud.update_interaction_target("", "")
+
 
 func _input(event: InputEvent) -> void:
 	if is_in_dialogue or is_in_menu:
@@ -64,12 +112,13 @@ func _process_movement() -> void:
 	input.x = Input.get_axis("move_left", "move_right")
 	input.y = Input.get_axis("move_up", "move_down")
 
+	var delta := get_physics_process_delta_time()
 	if input.length() > 0:
 		input = input.normalized()
 		facing_direction = input
-		velocity = input * speed
+		velocity = velocity.move_toward(input * speed, speed * 8.0 * delta)
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, speed * 0.5)
+		velocity = velocity.move_toward(Vector2.ZERO, speed * 6.0 * delta)
 
 
 func _process_follow_mode(_delta: float) -> void:
@@ -200,6 +249,11 @@ func _get_direction_name() -> String:
 
 func _update_raycast() -> void:
 	raycast.target_position = facing_direction.normalized() * Constants.INTERACTION_RADIUS
+
+
+func _shake(intensity: float, duration: float) -> void:
+	_shake_intensity = maxf(_shake_intensity, intensity)
+	_shake_timer = maxf(_shake_timer, duration)
 
 
 func _on_dialogue_started(_npc_id: String) -> void:

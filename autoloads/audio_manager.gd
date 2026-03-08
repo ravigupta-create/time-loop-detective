@@ -83,14 +83,135 @@ func _on_loop_ending(seconds_remaining: float) -> void:
 		_music_player.pitch_scale = 1.0 + urgency * 0.15
 
 
-func _generate_music_stream(_track_name: String) -> AudioStream:
-	# Generate a simple procedural music stream
-	# In a full implementation, this would load .ogg files or use AudioStreamGenerator
-	return null
+func _generate_music_stream(track_name: String) -> AudioStream:
+	# Procedural looping pad — location-specific chord progressions
+	var generator := AudioStreamWAV.new()
+	generator.format = AudioStreamWAV.FORMAT_8_BITS
+	generator.mix_rate = 22050
+	generator.stereo = false
+	generator.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var duration := 5.0 # 5 second loop
+	var sample_count := int(22050.0 * duration)
+	var samples := PackedByteArray()
+
+	# Choose chord frequencies based on location
+	var root := 220.0  # A3 default
+	var third := 261.6
+	var fifth := 329.6
+	match track_name:
+		"bar_crossroads":
+			root = 220.0; third = 261.6; fifth = 330.0  # Am
+		"cafe_rosetta":
+			root = 261.6; third = 329.6; fifth = 392.0  # C major
+		"back_alley":
+			root = 196.0; third = 233.1; fifth = 293.7  # G minor
+		"riverside_park":
+			root = 293.7; third = 370.0; fifth = 440.0  # D major
+		"docks":
+			root = 174.6; third = 207.7; fifth = 261.6  # F minor
+		"police_station":
+			root = 246.9; third = 293.7; fifth = 370.0  # B minor
+		"city_hall":
+			root = 261.6; third = 329.6; fifth = 392.0  # C major
+		"hotel_marlow":
+			root = 233.1; third = 277.2; fifth = 349.2  # Bb minor
+		"street_market":
+			root = 329.6; third = 415.3; fifth = 493.9  # E major
+		"apartment_complex":
+			root = 220.0; third = 277.2; fifth = 330.0  # Am
+
+	for i in sample_count:
+		var t := float(i) / 22050.0
+		var env := 0.25 * (1.0 + sin(t * 0.4 * TAU)) * 0.5  # Slow swell
+		var pad := sin(t * root * TAU) * 0.4
+		pad += sin(t * third * TAU) * 0.25
+		pad += sin(t * fifth * TAU) * 0.2
+		# Add subtle vibrato
+		pad += sin(t * root * 1.005 * TAU) * 0.1
+		var val := pad * env
+		samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
+
+	generator.data = samples
+	generator.loop_end = sample_count
+	return generator
 
 
-func _generate_ambience_stream(_ambience_name: String) -> AudioStream:
-	return null
+func _generate_ambience_stream(ambience_name: String) -> AudioStream:
+	# Location-specific ambient textures
+	var generator := AudioStreamWAV.new()
+	generator.format = AudioStreamWAV.FORMAT_8_BITS
+	generator.mix_rate = 22050
+	generator.stereo = false
+	generator.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var duration := 4.0
+	var sample_count := int(22050.0 * duration)
+	var samples := PackedByteArray()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = ambience_name.hash()
+
+	match ambience_name:
+		"cafe_rosetta":
+			# Cafe murmur: filtered noise + occasional clink
+			for i in sample_count:
+				var t := float(i) / 22050.0
+				var murmur := (rng.randf() * 2.0 - 1.0) * 0.08
+				murmur += sin(t * 180.0 * TAU) * 0.02 * sin(t * 0.5 * TAU)
+				# Occasional clink
+				var clink_phase := fmod(t, 1.8)
+				if clink_phase < 0.01:
+					murmur += sin(clink_phase * 3000.0 * TAU) * 0.15
+				samples.append(int(clampf(murmur, -1.0, 1.0) * 127.0 + 128.0))
+		"riverside_park":
+			# Water lapping + birds
+			for i in sample_count:
+				var t := float(i) / 22050.0
+				var water := sin(t * 2.5 * TAU) * (rng.randf() * 0.06 + 0.02)
+				water += (rng.randf() * 2.0 - 1.0) * 0.03 * sin(t * 1.2 * TAU)
+				# Bird chirp
+				var chirp_t := fmod(t, 2.5)
+				if chirp_t > 1.8 and chirp_t < 1.85:
+					water += sin((chirp_t - 1.8) * 4000.0 * TAU) * 0.1 * (1.85 - chirp_t) * 20.0
+				samples.append(int(clampf(water, -1.0, 1.0) * 127.0 + 128.0))
+		"back_alley":
+			# Wind + dripping
+			for i in sample_count:
+				var t := float(i) / 22050.0
+				var wind := (rng.randf() * 2.0 - 1.0) * 0.05 * (0.5 + 0.5 * sin(t * 0.3 * TAU))
+				# Drip
+				var drip_t := fmod(t, 1.4)
+				if drip_t < 0.005:
+					wind += sin(drip_t * 2500.0 * TAU) * 0.2 * (0.005 - drip_t) * 200.0
+				samples.append(int(clampf(wind, -1.0, 1.0) * 127.0 + 128.0))
+		"street_market":
+			# Crowd buzz + vendor calls
+			for i in sample_count:
+				var t := float(i) / 22050.0
+				var crowd := (rng.randf() * 2.0 - 1.0) * 0.1
+				crowd += sin(t * 220.0 * TAU) * 0.02 * sin(t * 0.8 * TAU)
+				crowd *= 0.5 + 0.5 * sin(t * 0.2 * TAU)
+				samples.append(int(clampf(crowd, -1.0, 1.0) * 127.0 + 128.0))
+		"docks":
+			# Deep water + creaking
+			for i in sample_count:
+				var t := float(i) / 22050.0
+				var water := sin(t * 1.0 * TAU) * (rng.randf() * 0.05 + 0.03)
+				water += (rng.randf() * 2.0 - 1.0) * 0.04
+				# Creak
+				var creak_t := fmod(t, 3.0)
+				if creak_t > 2.0 and creak_t < 2.1:
+					water += sin((creak_t - 2.0) * 400.0 * TAU) * 0.08
+				samples.append(int(clampf(water, -1.0, 1.0) * 127.0 + 128.0))
+		_:
+			# Default quiet hum
+			for i in sample_count:
+				var t := float(i) / 22050.0
+				var hum := (rng.randf() * 2.0 - 1.0) * 0.03
+				hum += sin(t * 60.0 * TAU) * 0.02
+				samples.append(int(clampf(hum, -1.0, 1.0) * 127.0 + 128.0))
+
+	generator.data = samples
+	generator.loop_end = sample_count
+	return generator
 
 
 func _generate_sfx(sfx_name: String) -> AudioStream:
@@ -125,6 +246,43 @@ func _generate_sfx(sfx_name: String) -> AudioStream:
 				var t := float(i) / 22050.0
 				var val := sin(t * 110.0 * TAU) * sin(t * 3.0 * TAU) * 0.8
 				samples.append(int(val * 127.0 + 128.0))
+		"typewriter":
+			# Softer click than "interact"
+			length = 880
+			for i in length:
+				var t := float(i) / 22050.0
+				var val := sin(t * 800.0 * TAU) * (1.0 - t * 12.0) * 0.4
+				val += (randf() * 2.0 - 1.0) * (1.0 - t * 14.0) * 0.15
+				samples.append(int(clampf(val, -1.0, 1.0) * 80.0 + 128.0))
+		"discovery_jingle":
+			# Rising 3-note arpeggio
+			length = 8820  # 0.4 seconds
+			for i in length:
+				var t := float(i) / 22050.0
+				var freq := 440.0
+				if t < 0.13:
+					freq = 523.3  # C5
+				elif t < 0.26:
+					freq = 659.3  # E5
+				else:
+					freq = 784.0  # G5
+				var note_t := fmod(t, 0.13)
+				var env := (1.0 - note_t * 5.0) if note_t < 0.12 else 0.0
+				env = maxf(env, 0.0)
+				var val := sin(t * freq * TAU) * env * 0.6
+				val += sin(t * freq * 2.0 * TAU) * env * 0.15
+				samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
+		"crime_alert":
+			# Descending alarm — two quick tones
+			length = 6615  # 0.3 seconds
+			for i in length:
+				var t := float(i) / 22050.0
+				var freq := 880.0 if t < 0.15 else 660.0
+				var env := 0.7 * (1.0 - fmod(t, 0.15) * 4.0)
+				env = maxf(env, 0.0)
+				var val := sin(t * freq * TAU) * env
+				val += sin(t * freq * 1.5 * TAU) * env * 0.3
+				samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
 		"footstep":
 			length = 1100
 			for i in length:

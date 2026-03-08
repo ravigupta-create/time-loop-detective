@@ -30,6 +30,13 @@ var timeline_entries: Array[Dictionary] = [] # [{loop, time, npc_id, location, a
 # Player position persistence (for save/load, not loop reset)
 var last_location: int = Enums.LocationID.APARTMENT_COMPLEX
 
+# Settings (persisted with save data)
+var settings: Dictionary = {
+	"music_volume": 0.8,
+	"sfx_volume": 1.0,
+	"ambience_volume": 0.6
+}
+
 
 func _ready() -> void:
 	EventBus.clue_discovered.connect(_on_clue_discovered)
@@ -186,7 +193,8 @@ func get_save_data() -> Dictionary:
 		"current_loop": current_loop,
 		"total_play_time": total_play_time,
 		"timeline_entries": timeline_entries,
-		"last_location": last_location
+		"last_location": last_location,
+		"settings": settings
 	}
 
 
@@ -220,3 +228,10 @@ func load_save_data(data: Dictionary) -> void:
 	for e in data.get("timeline_entries", []):
 		timeline_entries.append(e)
 	last_location = data.get("last_location", Enums.LocationID.APARTMENT_COMPLEX)
+	settings = data.get("settings", {"music_volume": 0.8, "sfx_volume": 1.0, "ambience_volume": 0.6})
+	# Apply volumes to AudioManager
+	if has_node("/root/AudioManager"):
+		var am := get_node("/root/AudioManager")
+		am.music_volume = settings.get("music_volume", 0.8)
+		am.sfx_volume = settings.get("sfx_volume", 1.0)
+		am.ambience_volume = settings.get("ambience_volume", 0.6)

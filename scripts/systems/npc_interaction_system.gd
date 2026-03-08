@@ -215,9 +215,8 @@ func _is_interacting(npc_id: String) -> bool:
 	return false
 
 
-func _player_is_present(_location_id: int) -> bool:
-	# The player is always at the current location being checked
-	return true
+func _player_is_present(location_id: int) -> bool:
+	return location_id == GameState.last_location
 
 
 func get_active_interaction_text(npc_id: String) -> String:

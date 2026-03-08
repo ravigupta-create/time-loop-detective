@@ -170,6 +170,18 @@ func _on_endgame_step_completed(step_id: String) -> void:
 	if step_id in completed_steps:
 		return
 
+	# Enforce sequential order: all previous steps must be completed
+	var step_index := -1
+	for i in ENDGAME_STEPS.size():
+		if ENDGAME_STEPS[i]["id"] == step_id:
+			step_index = i
+			break
+	if step_index > 0:
+		for i in step_index:
+			if ENDGAME_STEPS[i]["id"] not in completed_steps:
+				EventBus.notification_queued.emit("You need to do something else first...", "info")
+				return
+
 	# Validate step timing
 	var current_time := TimeManager.current_time
 	for step in ENDGAME_STEPS:

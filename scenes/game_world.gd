@@ -8,6 +8,7 @@ var npc_manager: Node = null
 var weather_system: WeatherSystem = null
 var npc_interaction_system: NPCInteractionSystem = null
 var endgame_manager: EndgameManager = null
+var _last_recorded_state: Dictionary = {} # npc_id -> "location_activity" for dedup
 
 const PLAYER_SCENE := preload("res://scenes/entities/player/player.tscn")
 
@@ -200,9 +201,13 @@ func _on_time_tick(current_time: float) -> void:
 				if eval_result.has("position"):
 					npc_node.set_target(eval_result["position"])
 
-		# Record to timeline if player can see
+		# Record to timeline only on state/location change (prevents 6000+ entries/loop)
 		if should_be_here:
-			GameState.record_timeline_entry(npc_id, current_location_id, eval_result.get("activity", "unknown"))
+			var activity: String = eval_result.get("activity", "unknown")
+			var state_key := "%d_%s" % [current_location_id, activity]
+			if _last_recorded_state.get(npc_id, "") != state_key:
+				_last_recorded_state[npc_id] = state_key
+				GameState.record_timeline_entry(npc_id, current_location_id, activity)
 
 	# Check for NPC-to-NPC interactions
 	_check_npc_interactions(current_time)
@@ -230,6 +235,7 @@ func _check_npc_interactions(current_time: float) -> void:
 
 
 func _on_loop_reset(_loop_number: int) -> void:
+	_last_recorded_state.clear()
 	# Reset to apartment
 	await get_tree().create_timer(0.1).timeout
 	_load_location(Enums.LocationID.APARTMENT_COMPLEX)
@@ -310,7 +316,13 @@ func _get_dialogue_for_npc(npc_id: String, npc_data: Dictionary) -> Dictionary:
 					var label: String = branch.get("choice_label", "")
 					if not label.is_empty() and not _choice_exists(choices, key):
 						choices.append({"id": key, "text": label, "leads_to": key})
-		first_line["choices"] = choices
+		# Filter out choices whose leads_to branch doesn't exist in the tree
+		var valid_choices: Array = []
+		for choice in choices:
+			var leads_to: String = choice.get("leads_to", "")
+			if leads_to.is_empty() or leads_to in tree:
+				valid_choices.append(choice)
+		first_line["choices"] = valid_choices
 
 	return tree
 

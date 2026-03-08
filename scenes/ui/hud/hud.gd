@@ -28,6 +28,14 @@ var _minimap_player_pos: Vector2 = Vector2(0.5, 0.5)
 var _clock_warning: bool = false
 var _weather_label: Label
 var _weather_icon: Label
+var _clue_counter: Label
+var _follow_indicator: Label
+var _follow_panel: Panel
+var _crime_alert_panel: Panel
+var _crime_alert_label: Label
+var _crime_active: bool = false
+var _minimap_legend_panel: Panel
+var _minimap_legend_visible: bool = false
 
 # Style colors
 const COLOR_HUD_BG: Color = Color(0.06, 0.04, 0.02, 0.75)
@@ -64,12 +72,17 @@ const NPC_DOT_COLORS: Dictionary = {
 func _ready() -> void:
 	layer = 10
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("hud")
 
 	_build_location_display()
 	_build_loop_clock_display()
 	_build_weather_display()
+	_build_clue_counter()
+	_build_follow_indicator()
+	_build_crime_alert()
 	_build_interaction_prompt()
 	_build_minimap()
+	_build_minimap_legend()
 	_build_notification_panel()
 	_setup_notification_timer()
 
@@ -79,6 +92,7 @@ func _ready() -> void:
 	EventBus.clue_discovered.connect(_on_clue_discovered)
 	EventBus.notification_queued.connect(_on_notification_queued)
 	EventBus.crime_started.connect(_on_crime_started)
+	EventBus.crime_completed.connect(_on_crime_completed)
 	EventBus.loop_reset.connect(_on_loop_reset)
 	EventBus.loop_ending_soon.connect(_on_loop_ending_soon)
 	EventBus.npc_arrived_at_location.connect(_on_npc_arrived_at_location)
@@ -89,6 +103,8 @@ func _ready() -> void:
 	EventBus.notebook_closed.connect(_on_notebook_closed)
 	EventBus.weather_changed.connect(_on_weather_changed)
 	EventBus.conspiracy_milestone_reached.connect(_on_milestone_reached)
+	EventBus.player_started_following.connect(_on_player_started_following)
+	EventBus.player_stopped_following.connect(_on_player_stopped_following)
 
 
 # ---------------------------------------------------------------------------
@@ -195,20 +211,129 @@ func _build_weather_display() -> void:
 	add_child(weather_bg)
 
 	_weather_icon = Label.new()
-	_weather_icon.text = "SUN"
-	_weather_icon.position = Vector2(3, 1)
-	_weather_icon.size = Vector2(24, 14)
-	_weather_icon.add_theme_font_size_override("font_size", 7)
+	_weather_icon.text = "\u2600"
+	_weather_icon.position = Vector2(3, -1)
+	_weather_icon.size = Vector2(20, 18)
+	_weather_icon.add_theme_font_size_override("font_size", 12)
 	_weather_icon.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 	weather_bg.add_child(_weather_icon)
 
 	_weather_label = Label.new()
 	_weather_label.text = "Clear"
-	_weather_label.position = Vector2(26, 1)
-	_weather_label.size = Vector2(40, 14)
+	_weather_label.position = Vector2(22, 1)
+	_weather_label.size = Vector2(44, 14)
 	_weather_label.add_theme_font_size_override("font_size", 7)
 	_weather_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	weather_bg.add_child(_weather_label)
+
+
+func _build_clue_counter() -> void:
+	var bg := Panel.new()
+	bg.position = Vector2(170, 4)
+	bg.size = Vector2(70, 18)
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = COLOR_HUD_BG
+	bg_style.set_border_width_all(1)
+	bg_style.border_color = COLOR_HUD_BORDER
+	bg_style.set_corner_radius_all(2)
+	bg_style.set_content_margin_all(2)
+	bg.add_theme_stylebox_override("panel", bg_style)
+	add_child(bg)
+
+	_clue_counter = Label.new()
+	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
+	_clue_counter.position = Vector2(4, 1)
+	_clue_counter.size = Vector2(62, 14)
+	_clue_counter.add_theme_font_size_override("font_size", 8)
+	_clue_counter.add_theme_color_override("font_color", Color(0.85, 0.72, 0.20))
+	_clue_counter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bg.add_child(_clue_counter)
+
+
+func _build_follow_indicator() -> void:
+	_follow_panel = Panel.new()
+	_follow_panel.position = Vector2(220, 26)
+	_follow_panel.size = Vector2(200, 16)
+	_follow_panel.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.08, 0.12, 0.85)
+	style.set_border_width_all(1)
+	style.border_color = Color(0.3, 0.5, 0.8)
+	style.set_corner_radius_all(2)
+	style.set_content_margin_all(2)
+	_follow_panel.add_theme_stylebox_override("panel", style)
+	add_child(_follow_panel)
+
+	_follow_indicator = Label.new()
+	_follow_indicator.text = ""
+	_follow_indicator.position = Vector2(4, 0)
+	_follow_indicator.size = Vector2(192, 14)
+	_follow_indicator.add_theme_font_size_override("font_size", 7)
+	_follow_indicator.add_theme_color_override("font_color", Color(0.5, 0.7, 1.0))
+	_follow_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_follow_panel.add_child(_follow_indicator)
+
+
+func _build_crime_alert() -> void:
+	_crime_alert_panel = Panel.new()
+	_crime_alert_panel.position = Vector2(250, 44)
+	_crime_alert_panel.size = Vector2(140, 18)
+	_crime_alert_panel.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.15, 0.02, 0.02, 0.9)
+	style.set_border_width_all(1)
+	style.border_color = Color(0.9, 0.2, 0.15)
+	style.set_corner_radius_all(2)
+	style.set_content_margin_all(2)
+	_crime_alert_panel.add_theme_stylebox_override("panel", style)
+	add_child(_crime_alert_panel)
+
+	_crime_alert_label = Label.new()
+	_crime_alert_label.text = "CRIME ACTIVE"
+	_crime_alert_label.position = Vector2(4, 1)
+	_crime_alert_label.size = Vector2(132, 14)
+	_crime_alert_label.add_theme_font_size_override("font_size", 8)
+	_crime_alert_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.15))
+	_crime_alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_crime_alert_panel.add_child(_crime_alert_label)
+
+
+func _build_minimap_legend() -> void:
+	_minimap_legend_panel = Panel.new()
+	_minimap_legend_panel.position = Vector2(420, 277)
+	_minimap_legend_panel.size = Vector2(108, 79)
+	_minimap_legend_panel.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_MINIMAP_BG
+	style.set_border_width_all(1)
+	style.border_color = COLOR_MINIMAP_BORDER
+	style.set_corner_radius_all(2)
+	style.set_content_margin_all(3)
+	_minimap_legend_panel.add_theme_stylebox_override("panel", style)
+	add_child(_minimap_legend_panel)
+
+	var y_off := 2
+	var npc_names := {
+		"frank_deluca": "Frank", "maria_santos": "Maria",
+		"detective_hale": "Hale", "iris_chen": "Iris",
+		"victor_crane": "Victor", "penny_marsh": "Penny",
+		"dr_eleanor_solomon": "Eleanor", "nina_volkov": "Nina",
+		"mayor_aldridge": "Mayor", "tommy_reeves": "Tommy",
+	}
+	for npc_id in npc_names:
+		var dot := ColorRect.new()
+		dot.position = Vector2(4, y_off + 1)
+		dot.size = Vector2(5, 5)
+		dot.color = NPC_DOT_COLORS.get(npc_id, Color.GRAY)
+		_minimap_legend_panel.add_child(dot)
+		var lbl := Label.new()
+		lbl.text = npc_names[npc_id]
+		lbl.position = Vector2(12, y_off - 1)
+		lbl.size = Vector2(90, 8)
+		lbl.add_theme_font_size_override("font_size", 5)
+		lbl.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+		_minimap_legend_panel.add_child(lbl)
+		y_off += 7
 
 
 func _build_interaction_prompt() -> void:
@@ -395,6 +520,7 @@ func _on_clue_discovered(clue_id: String) -> void:
 	var clue: Dictionary = GameState.discovered_clues.get(clue_id, {})
 	var clue_title: String = clue.get("title", clue_id)
 	_queue_notification("Clue found: %s" % clue_title, "clue")
+	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
 
 
 func _on_notification_queued(text: String, icon: String) -> void:
@@ -402,7 +528,14 @@ func _on_notification_queued(text: String, icon: String) -> void:
 
 
 func _on_crime_started(crime_id: String, _crime_type: int) -> void:
+	_crime_active = true
+	_crime_alert_panel.visible = true
 	_queue_notification("Something is happening nearby...", "crime")
+
+
+func _on_crime_completed(_crime_id: String) -> void:
+	_crime_active = false
+	_crime_alert_panel.visible = false
 
 
 func _on_loop_reset(loop_number: int) -> void:
@@ -410,6 +543,10 @@ func _on_loop_reset(loop_number: int) -> void:
 	_progress_bar.value = 0.0
 	_clock_warning = false
 	_clock_label.add_theme_color_override("font_color", COLOR_CLOCK_NORMAL)
+	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
+	_follow_panel.visible = false
+	_crime_active = false
+	_crime_alert_panel.visible = false
 
 	# Reset progress bar fill color
 	var normal_fill := StyleBoxFlat.new()
@@ -421,7 +558,7 @@ func _on_loop_reset(loop_number: int) -> void:
 func _on_loop_ending_soon(seconds_remaining: float) -> void:
 	# Pulse clock label intensity based on remaining time
 	if seconds_remaining <= 30.0:
-		var pulse := absf(sin(TimeManager.current_time * 4.0))
+		var pulse := absf(sin(Time.get_ticks_msec() * 0.003 * TAU))
 		var warning_color := COLOR_CLOCK_WARNING.lerp(Color.WHITE, pulse * 0.4)
 		_clock_label.add_theme_color_override("font_color", warning_color)
 
@@ -473,19 +610,19 @@ func _on_notebook_closed() -> void:
 func _on_weather_changed(weather_type: int) -> void:
 	match weather_type:
 		Enums.WeatherType.CLEAR:
-			_weather_icon.text = "SUN"
+			_weather_icon.text = "\u2600"
 			_weather_icon.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 			_weather_label.text = "Clear"
 		Enums.WeatherType.OVERCAST:
-			_weather_icon.text = "CLD"
+			_weather_icon.text = "\u2601"
 			_weather_icon.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
 			_weather_label.text = "Overcast"
 		Enums.WeatherType.RAIN:
-			_weather_icon.text = "RAN"
+			_weather_icon.text = "\u2602"
 			_weather_icon.add_theme_color_override("font_color", Color(0.4, 0.5, 0.7))
 			_weather_label.text = "Rain"
 		Enums.WeatherType.FOG:
-			_weather_icon.text = "FOG"
+			_weather_icon.text = "\u2591"
 			_weather_icon.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
 			_weather_label.text = "Fog"
 
@@ -500,6 +637,34 @@ func _on_milestone_reached(milestone_id: String, _tier: int) -> void:
 			_queue_notification("Milestone: The Device", "clue")
 		"the_truth":
 			_queue_notification("Milestone: The Truth", "clue")
+
+
+func _on_player_started_following(npc_id: String) -> void:
+	var npc_name: String = npc_id.replace("_", " ").capitalize()
+	_follow_indicator.text = "Following: %s" % npc_name
+	_follow_panel.visible = true
+
+
+func _on_player_stopped_following() -> void:
+	_follow_panel.visible = false
+
+
+func _process(_delta: float) -> void:
+	# Pulse the crime alert when active
+	if _crime_active and _crime_alert_panel.visible:
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.004)
+		_crime_alert_label.modulate.a = 0.5 + pulse * 0.5
+		var style: StyleBoxFlat = _crime_alert_panel.get_theme_stylebox("panel") as StyleBoxFlat
+		if style:
+			style.border_color = Color(0.9, 0.2, 0.15, 0.5 + pulse * 0.5)
+
+
+func _input(event: InputEvent) -> void:
+	# Toggle minimap legend with L key
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_L:
+			_minimap_legend_visible = not _minimap_legend_visible
+			_minimap_legend_panel.visible = _minimap_legend_visible
 
 
 # ---------------------------------------------------------------------------
@@ -521,16 +686,16 @@ func hide_interaction_prompt() -> void:
 		panel.visible = false
 
 
-func update_interaction_target(interactable_type: String, _target_name: String) -> void:
+func update_interaction_target(interactable_type: String, target_name: String) -> void:
 	match interactable_type:
 		"npc":
-			show_interaction_prompt("Press E to talk")
+			show_interaction_prompt("Talk to %s" % target_name if not target_name.is_empty() else "Press E to talk")
 		"evidence":
-			show_interaction_prompt("Press E to inspect")
+			show_interaction_prompt("Inspect %s" % target_name if not target_name.is_empty() else "Press E to inspect")
 		"door":
-			show_interaction_prompt("Press E to enter")
+			show_interaction_prompt("Enter %s" % target_name if not target_name.is_empty() else "Press E to enter")
 		"object":
-			show_interaction_prompt("Press E to examine")
+			show_interaction_prompt("Examine %s" % target_name if not target_name.is_empty() else "Press E to examine")
 		"":
 			hide_interaction_prompt()
 		_:
@@ -578,7 +743,14 @@ func _show_next_notification() -> void:
 	_notification_tween.tween_property(_notification_panel, "position:x", 8.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_notification_tween.tween_callback(_notification_timer.start)
 
-	EventBus.sfx_requested.emit("clue_discovered")
+	# Differentiated notification SFX
+	match icon_type:
+		"crime":
+			EventBus.sfx_requested.emit("crime_alert")
+		"clue":
+			EventBus.sfx_requested.emit("discovery_jingle")
+		_:
+			EventBus.sfx_requested.emit("clue_discovered")
 
 
 func _dismiss_notification() -> void:
