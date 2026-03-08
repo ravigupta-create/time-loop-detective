@@ -5,10 +5,12 @@ var _music_player: AudioStreamPlayer
 var _ambience_player: AudioStreamPlayer
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _crossfade_tween: Tween
+var _duck_tween: Tween
 
 var music_volume: float = 0.8
 var sfx_volume: float = 1.0
 var ambience_volume: float = 0.6
+var _conspiracy_intensity: float = 0.0
 
 const MAX_SFX_PLAYERS: int = 8
 
@@ -32,6 +34,11 @@ func _ready() -> void:
 	EventBus.music_change_requested.connect(play_music)
 	EventBus.ambience_change_requested.connect(play_ambience)
 	EventBus.loop_ending_soon.connect(_on_loop_ending)
+	EventBus.conspiracy_progress_changed.connect(_on_conspiracy_progress_changed)
+	EventBus.notebook_opened.connect(_duck_audio)
+	EventBus.notebook_closed.connect(_unduck_audio)
+	EventBus.game_paused.connect(_duck_audio)
+	EventBus.game_resumed.connect(_unduck_audio)
 
 
 func play_music(track_name: String) -> void:
@@ -120,14 +127,26 @@ func _generate_music_stream(track_name: String) -> AudioStream:
 		"apartment_complex":
 			root = 220.0; third = 277.2; fifth = 330.0  # Am
 
+	var ci := _conspiracy_intensity
 	for i in sample_count:
 		var t := float(i) / 22050.0
 		var env := 0.25 * (1.0 + sin(t * 0.4 * TAU)) * 0.5  # Slow swell
-		var pad := sin(t * root * TAU) * 0.4
-		pad += sin(t * third * TAU) * 0.25
-		pad += sin(t * fifth * TAU) * 0.2
-		# Add subtle vibrato
-		pad += sin(t * root * 1.005 * TAU) * 0.1
+		# Core pad (reduced levels to make room)
+		var pad := sin(t * root * TAU) * 0.3
+		pad += sin(t * third * TAU) * 0.18
+		pad += sin(t * fifth * TAU) * 0.14
+		# Sub-bass
+		pad += sin(t * root * 0.5 * TAU) * 0.12
+		# Overtone shimmer (scales with conspiracy intensity)
+		var shimmer_amp := 0.04 + ci * 0.06
+		pad += sin(t * root * 3.0 * TAU) * shimmer_amp * (0.5 + 0.5 * sin(t * 0.7 * TAU))
+		# Subtle vibrato
+		pad += sin(t * root * 1.005 * TAU) * 0.06
+		# Rhythmic pulse at ~100 BPM (scales with conspiracy)
+		var pulse_rate := 1.67 + ci * 0.5
+		var pulse_env := sin(t * pulse_rate * TAU)
+		pulse_env = pulse_env * pulse_env  # Squared for sharper pulse
+		pad *= 1.0 + pulse_env * (0.15 + ci * 0.25)
 		var val := pad * env
 		samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
 
@@ -302,6 +321,35 @@ func _generate_sfx(sfx_name: String) -> AudioStream:
 				var val := sin(t * 200.0 * TAU) * exp(-t * 8.0) * 0.6
 				val += (randf() * 2.0 - 1.0) * exp(-t * 15.0) * 0.3
 				samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
+		"vhs_warble":
+			# Tape warble: low-freq wobble + noise bursts + high whine
+			length = 22050  # 1 second
+			for i in length:
+				var t := float(i) / 22050.0
+				var wobble := sin(t * 40.0 * TAU + sin(t * 5.0 * TAU) * 3.0) * 0.3
+				var noise := (randf() * 2.0 - 1.0) * 0.15 * exp(-fmod(t, 0.2) * 10.0)
+				var whine := sin(t * 2000.0 * TAU) * 0.05 * (0.5 + 0.5 * sin(t * 8.0 * TAU))
+				var env := 1.0 - t  # Fade out
+				var val := (wobble + noise + whine) * env
+				samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
+		"victory":
+			# Rising major chord arpeggio: C5 -> E5 -> G5 -> C6
+			length = 22050  # 1 second
+			var freqs := [523.3, 659.3, 784.0, 1046.5]
+			for i in length:
+				var t := float(i) / 22050.0
+				var note_idx := mini(int(t * 4.0), 3)
+				var freq: float = freqs[note_idx]
+				var note_t := fmod(t, 0.25)
+				var env := (1.0 - note_t * 2.5)
+				env = maxf(env, 0.0)
+				# Sustain last note longer
+				if note_idx == 3:
+					env = maxf(1.0 - (t - 0.75) * 1.5, 0.0)
+				var val := sin(t * freq * TAU) * env * 0.5
+				val += sin(t * freq * 2.0 * TAU) * env * 0.15
+				val += sin(t * freq * 3.0 * TAU) * env * 0.05
+				samples.append(int(clampf(val, -1.0, 1.0) * 127.0 + 128.0))
 		_:
 			# Default blip
 			for i in length:
@@ -311,6 +359,26 @@ func _generate_sfx(sfx_name: String) -> AudioStream:
 
 	generator.data = samples
 	return generator
+
+
+func _on_conspiracy_progress_changed(new_value: int) -> void:
+	_conspiracy_intensity = clampf(float(new_value) / 100.0, 0.0, 1.0)
+
+
+func _duck_audio() -> void:
+	if _duck_tween:
+		_duck_tween.kill()
+	_duck_tween = create_tween().set_parallel(true)
+	_duck_tween.tween_property(_music_player, "volume_db", linear_to_db(music_volume * 0.3), 0.3)
+	_duck_tween.tween_property(_ambience_player, "volume_db", linear_to_db(ambience_volume * 0.3), 0.3)
+
+
+func _unduck_audio() -> void:
+	if _duck_tween:
+		_duck_tween.kill()
+	_duck_tween = create_tween().set_parallel(true)
+	_duck_tween.tween_property(_music_player, "volume_db", linear_to_db(music_volume), 0.5)
+	_duck_tween.tween_property(_ambience_player, "volume_db", linear_to_db(ambience_volume), 0.5)
 
 
 func stop_all() -> void:

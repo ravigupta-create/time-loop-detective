@@ -111,6 +111,23 @@ func _setup_tilemap() -> void:
 func _setup_ambient() -> void:
 	EventBus.ambience_change_requested.emit("park")
 
+	# Fireflies
+	var ts := Constants.TILE_SIZE
+	var fireflies := CPUParticles2D.new()
+	fireflies.amount = 15
+	fireflies.lifetime = 3.0
+	fireflies.direction = Vector2(0, -1)
+	fireflies.spread = 180.0
+	fireflies.gravity = Vector2.ZERO
+	fireflies.initial_velocity_min = 5.0
+	fireflies.initial_velocity_max = 15.0
+	fireflies.color = Color(0.7, 0.9, 0.3, 0.6)
+	fireflies.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	fireflies.emission_rect_extents = Vector2(12 * ts, 8 * ts)
+	fireflies.position = Vector2(15 * ts, 10 * ts)
+	fireflies.z_index = 6
+	add_child(fireflies)
+
 
 func _setup_interactables() -> void:
 	var ts := Constants.TILE_SIZE

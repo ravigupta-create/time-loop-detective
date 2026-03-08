@@ -62,6 +62,7 @@ func play_loop_reset() -> void:
 	EventBus.transition_started.emit("loop_reset")
 	AudioManager.stop_all()
 	EventBus.sfx_requested.emit("loop_warning")
+	EventBus.sfx_requested.emit("vhs_warble")
 
 	# VHS rewind effect - flash and distort
 	if _tween:

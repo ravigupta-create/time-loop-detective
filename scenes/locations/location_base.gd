@@ -11,6 +11,7 @@ var npc_nodes: Dictionary = {} # npc_id -> NPC node
 var evidence_nodes: Array[Node] = []
 var door_areas: Array[Area2D] = []
 var _weather_overlay: ColorRect = null
+var _rain_particles: CPUParticles2D = null
 
 @onready var tilemap: TileMapLayer = $GroundLayer
 @onready var wall_layer: TileMapLayer = $WallLayer
@@ -34,6 +35,8 @@ func _ready() -> void:
 	EventBus.time_of_day_changed.connect(_on_time_of_day_changed)
 	EventBus.weather_changed.connect(_on_weather_changed)
 	EventBus.player_entered_location.emit(location_id)
+
+	_setup_rain_particles()
 
 	# Create weather overlay
 	_weather_overlay = ColorRect.new()
@@ -79,6 +82,24 @@ func _setup_spawn_points() -> void:
 func _setup_doors() -> void:
 	# Override to add door areas for each exit
 	pass
+
+
+func _setup_rain_particles() -> void:
+	_rain_particles = CPUParticles2D.new()
+	_rain_particles.emitting = false
+	_rain_particles.amount = 80
+	_rain_particles.lifetime = 1.2
+	_rain_particles.direction = Vector2(0.1, 1.0)
+	_rain_particles.spread = 8.0
+	_rain_particles.gravity = Vector2(0, 300)
+	_rain_particles.initial_velocity_min = 150.0
+	_rain_particles.initial_velocity_max = 200.0
+	_rain_particles.color = Color(0.5, 0.55, 0.7, 0.4)
+	_rain_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_rain_particles.emission_rect_extents = Vector2(location_width * Constants.TILE_SIZE * 0.5, 4)
+	_rain_particles.position = Vector2(location_width * Constants.TILE_SIZE * 0.5, 0)
+	_rain_particles.z_index = 8
+	add_child(_rain_particles)
 
 
 func _setup_ambient() -> void:
@@ -150,6 +171,9 @@ func _on_weather_changed(weather_type: int) -> void:
 			_weather_overlay.color = Color(0.3, 0.35, 0.45, 0.25)
 		Enums.WeatherType.FOG:
 			_weather_overlay.color = Color(0.7, 0.7, 0.75, 0.35)
+	# Toggle rain particles
+	if _rain_particles:
+		_rain_particles.emitting = (weather_type == Enums.WeatherType.RAIN)
 
 
 func _on_evidence_spawned(evidence_id: String, ev_location: int) -> void:
@@ -202,6 +226,21 @@ func _spawn_evidence(evidence_id: String) -> void:
 		randf_range(Constants.TILE_SIZE * 3, (location_height - 3) * Constants.TILE_SIZE)
 	)
 	ev.position = pos
+
+	# Evidence glow particles
+	var glow := CPUParticles2D.new()
+	glow.amount = 6
+	glow.lifetime = 2.0
+	glow.direction = Vector2(0, -1)
+	glow.spread = 30.0
+	glow.gravity = Vector2(0, -8)
+	glow.initial_velocity_min = 3.0
+	glow.initial_velocity_max = 8.0
+	glow.color = Color(1.0, 0.85, 0.2, 0.6)
+	glow.scale_amount_min = 0.5
+	glow.scale_amount_max = 1.0
+	glow.z_index = 3
+	ev.add_child(glow)
 
 	ev.set_meta("evidence_id", evidence_id)
 	ev.set_script(load("res://scenes/entities/evidence_pickup.gd") if ResourceLoader.exists("res://scenes/entities/evidence_pickup.gd") else null)

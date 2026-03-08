@@ -521,6 +521,7 @@ func _on_clue_discovered(clue_id: String) -> void:
 	var clue_title: String = clue.get("title", clue_id)
 	_queue_notification("Clue found: %s" % clue_title, "clue")
 	_clue_counter.text = "%d Clues" % GameState.discovered_clues.size()
+	_play_clue_sparkle()
 
 
 func _on_notification_queued(text: String, icon: String) -> void:
@@ -628,6 +629,7 @@ func _on_weather_changed(weather_type: int) -> void:
 
 
 func _on_milestone_reached(milestone_id: String, _tier: int) -> void:
+	_flash_milestone(_tier)
 	match milestone_id:
 		"familiar_faces":
 			_queue_notification("Milestone: Familiar Faces", "clue")
@@ -762,6 +764,52 @@ func _dismiss_notification() -> void:
 		_notification_panel.visible = false
 		_show_next_notification()
 	)
+
+
+# ---------------------------------------------------------------------------
+# Visual Effects
+# ---------------------------------------------------------------------------
+
+func _play_clue_sparkle() -> void:
+	var sparkle := CPUParticles2D.new()
+	sparkle.emitting = true
+	sparkle.one_shot = true
+	sparkle.amount = 12
+	sparkle.lifetime = 0.8
+	sparkle.explosiveness = 0.9
+	sparkle.direction = Vector2(0, -1)
+	sparkle.spread = 180.0
+	sparkle.gravity = Vector2(0, 20)
+	sparkle.initial_velocity_min = 30.0
+	sparkle.initial_velocity_max = 60.0
+	sparkle.color = Color(0.85, 0.72, 0.20, 0.9)
+	sparkle.scale_amount_min = 0.5
+	sparkle.scale_amount_max = 1.5
+	# Position near clue counter (top area, around x=205, y=13)
+	sparkle.position = Vector2(205, 13)
+	add_child(sparkle)
+	# Self-cleanup
+	var timer := get_tree().create_timer(1.5)
+	timer.timeout.connect(sparkle.queue_free)
+
+
+func _flash_milestone(tier: int) -> void:
+	var flash := ColorRect.new()
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	match tier:
+		0:
+			flash.color = Color(0.85, 0.72, 0.20, 0.4)  # Gold
+		1:
+			flash.color = Color(0.6, 0.3, 0.7, 0.4)  # Purple
+		2:
+			flash.color = Color(0.9, 0.2, 0.15, 0.4)  # Red
+		_:
+			flash.color = Color(0.85, 0.72, 0.20, 0.4)  # Gold default
+	add_child(flash)
+	var tween := create_tween()
+	tween.tween_property(flash, "color:a", 0.0, 0.6).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(flash.queue_free)
 
 
 # ---------------------------------------------------------------------------
