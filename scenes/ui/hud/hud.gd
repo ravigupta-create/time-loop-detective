@@ -1,4 +1,4 @@
-extends CanvasLayer
+extends Control
 ## In-game HUD: location name, loop clock, interaction prompt, minimap,
 ## and slide-in notification system. Built entirely programmatically.
 
@@ -70,7 +70,6 @@ const NPC_DOT_COLORS: Dictionary = {
 
 
 func _ready() -> void:
-	layer = 10
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group("hud")
 
@@ -534,7 +533,7 @@ func _on_crime_started(crime_id: String, _crime_type: int) -> void:
 	_queue_notification("Something is happening nearby...", "crime")
 
 
-func _on_crime_completed(_crime_id: String) -> void:
+func _on_crime_completed(_crime_id: String, _outcome: String = "") -> void:
 	_crime_active = false
 	_crime_alert_panel.visible = false
 
@@ -795,7 +794,7 @@ func _play_clue_sparkle() -> void:
 
 func _flash_milestone(tier: int) -> void:
 	var flash := ColorRect.new()
-	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	match tier:
 		0:

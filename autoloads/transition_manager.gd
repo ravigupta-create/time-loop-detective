@@ -14,7 +14,7 @@ func _ready() -> void:
 
 	_color_rect = ColorRect.new()
 	_color_rect.color = Color(0, 0, 0, 0)
-	_color_rect.anchors_preset = Control.PRESET_FULL_RECT
+	_color_rect.size = Vector2(640, 360)
 	_color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_canvas_layer.add_child(_color_rect)
 

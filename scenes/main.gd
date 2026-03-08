@@ -34,7 +34,8 @@ func _show_main_menu() -> void:
 
 
 func _on_game_started() -> void:
-	_start_game(false)
+	if not _is_game_running:
+		_start_game(false)
 
 
 func _on_game_loaded() -> void:
@@ -100,7 +101,8 @@ func _start_game(is_loaded: bool) -> void:
 	add_child(pause_layer)
 
 	_is_game_running = true
-	EventBus.endgame_victory.connect(_show_victory_screen)
+	if not EventBus.endgame_victory.is_connected(_show_victory_screen):
+		EventBus.endgame_victory.connect(_show_victory_screen)
 
 	if not is_loaded:
 		_show_tutorial()
@@ -145,7 +147,7 @@ func _show_tutorial() -> void:
 
 	# Semi-transparent overlay
 	var overlay := ColorRect.new()
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.size = Vector2(640, 360)
 	overlay.color = Color(0, 0, 0, 0.7)
 	_tutorial_layer.add_child(overlay)
 
@@ -221,9 +223,8 @@ func _show_tutorial() -> void:
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(prompt)
 
-	# Pulse animation
-	var tween := create_tween().set_loops()
-	tween.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
+	# Pulse animation (created on tutorial_layer so it runs while paused)
+	var tween := _tutorial_layer.create_tween().set_loops()
 	tween.tween_property(prompt, "modulate:a", 0.3, 0.8)
 	tween.tween_property(prompt, "modulate:a", 1.0, 0.8)
 
@@ -253,12 +254,11 @@ func _show_victory_screen() -> void:
 
 	# Dark background — fade in
 	var bg := ColorRect.new()
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.size = Vector2(640, 360)
 	bg.color = Color(0, 0, 0, 0)
 	_victory_layer.add_child(bg)
 
-	var tween := create_tween()
-	tween.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
+	var tween := _victory_layer.create_tween()
 	tween.tween_property(bg, "color:a", 0.85, 1.5)
 
 	# Title: "THE LOOP IS BROKEN"
