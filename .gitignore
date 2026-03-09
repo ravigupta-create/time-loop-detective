@@ -1,5 +1,4 @@
-# Godot build cache
-.godot/
-
-# Import metadata in docs (not needed for web)
-docs/*.import
+.DS_Store
+Thumbs.db
+*.swp
+*~

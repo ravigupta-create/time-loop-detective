@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midnight at Ravenholm — A Time Loop Detective Game</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen active">
+            <div id="title-rain"></div>
+            <div id="title-content">
+                <div id="title-logo">
+                    <div class="title-line-small">MIDNIGHT AT</div>
+                    <div class="title-line-big">RAVENHOLM</div>
+                    <div class="title-divider"></div>
+                    <div class="title-tagline">A Time Loop Detective Game</div>
+                </div>
+                <div id="title-menu">
+                    <button class="menu-btn" id="btn-new-game">New Investigation</button>
+                    <button class="menu-btn" id="btn-continue" style="display:none">Continue Investigation</button>
+                    <button class="menu-btn" id="btn-how-to-play">How to Play</button>
+                </div>
+                <div id="title-footer">100% Free — No Ads — No Tracking — No Dependencies</div>
+            </div>
+        </div>
+
+        <!-- Intro Cutscene -->
+        <div id="intro-screen" class="screen">
+            <div id="intro-text"></div>
+            <div id="intro-prompt">Click to continue...</div>
+        </div>
+
+        <!-- Game HUD -->
+        <div id="hud" class="screen">
+            <div id="hud-top">
+                <div id="hud-location"></div>
+                <div id="hud-time">
+                    <span id="hud-clock">6:00 AM</span>
+                    <div id="hud-time-bar"><div id="hud-time-fill"></div></div>
+                </div>
+                <div id="hud-loop">Loop <span id="hud-loop-num">1</span></div>
+            </div>
+            <div id="hud-bottom">
+                <button class="hud-btn" id="btn-notebook" title="Detective Notebook (N)">📓 Notebook</button>
+                <button class="hud-btn" id="btn-wait" title="Wait 30 minutes (W)">⏳ Wait</button>
+                <button class="hud-btn" id="btn-fast-forward" title="Fast Forward (F)">⏩ Fast Forward</button>
+                <button class="hud-btn" id="btn-accuse" title="Make Accusation (A)">⚖️ Accuse</button>
+            </div>
+        </div>
+
+        <!-- Room View -->
+        <div id="room-view" class="screen">
+            <div id="room-description"></div>
+            <div id="room-narration"></div>
+            <div id="room-actions">
+                <div id="room-objects"></div>
+                <div id="room-npcs"></div>
+                <div id="room-exits"></div>
+            </div>
+        </div>
+
+        <!-- Dialogue Box -->
+        <div id="dialogue-screen" class="screen">
+            <div id="dialogue-box">
+                <div id="dialogue-header">
+                    <canvas id="dialogue-portrait" width="80" height="80"></canvas>
+                    <div id="dialogue-name"></div>
+                </div>
+                <div id="dialogue-text"></div>
+                <div id="dialogue-choices"></div>
+            </div>
+        </div>
+
+        <!-- Notebook -->
+        <div id="notebook-screen" class="screen">
+            <div id="notebook-panel">
+                <div id="notebook-header">
+                    <h2>Detective's Notebook</h2>
+                    <button id="notebook-close">✕</button>
+                </div>
+                <div id="notebook-tabs">
+                    <button class="nb-tab active" data-tab="clues">Clues</button>
+                    <button class="nb-tab" data-tab="profiles">Profiles</button>
+                    <button class="nb-tab" data-tab="timeline">Timeline</button>
+                    <button class="nb-tab" data-tab="board">Board</button>
+                    <button class="nb-tab" data-tab="theories">Theories</button>
+                </div>
+                <div id="notebook-content">
+                    <div id="nb-clues" class="nb-page active"></div>
+                    <div id="nb-profiles" class="nb-page"></div>
+                    <div id="nb-timeline" class="nb-page"></div>
+                    <div id="nb-board" class="nb-page">
+                        <canvas id="board-canvas"></canvas>
+                    </div>
+                    <div id="nb-theories" class="nb-page"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accusation Screen -->
+        <div id="accusation-screen" class="screen">
+            <div id="accusation-panel">
+                <h2>Make Your Accusation</h2>
+                <p id="accusation-prompt">Who murdered Lord Ashworth?</p>
+                <div id="accusation-suspects"></div>
+                <div id="accusation-evidence"></div>
+                <div id="accusation-confirm" style="display:none">
+                    <p id="accusation-summary"></p>
+                    <button id="btn-confirm-accuse" class="menu-btn">Confirm Accusation</button>
+                    <button id="btn-cancel-accuse" class="menu-btn secondary">Go Back</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fast Forward Modal -->
+        <div id="ff-screen" class="screen">
+            <div id="ff-panel">
+                <h3>Fast Forward To...</h3>
+                <div id="ff-options"></div>
+                <button id="ff-cancel" class="menu-btn secondary">Cancel</button>
+            </div>
+        </div>
+
+        <!-- How To Play -->
+        <div id="help-screen" class="screen">
+            <div id="help-panel">
+                <h2>How to Play</h2>
+                <div id="help-content">
+                    <div class="help-section">
+                        <h3>The Premise</h3>
+                        <p>You are Detective Voss, invited to a winter gala at Ravenholm Manor. At midnight, Lord Ashworth is found murdered. Then you wake up... and it's the same morning again. You're trapped in a time loop.</p>
+                    </div>
+                    <div class="help-section">
+                        <h3>Your Goal</h3>
+                        <p>Use each loop to gather evidence, interrogate suspects, eavesdrop on conversations, and piece together the truth. Your <strong>knowledge persists</strong> across loops — the day resets, but you remember everything.</p>
+                    </div>
+                    <div class="help-section">
+                        <h3>Time Management</h3>
+                        <p>Each action costs time. Moving between rooms takes 15 minutes. Conversations take 10-20 minutes. You have from <strong>6:00 AM to midnight</strong> — use your time wisely. You can wait or fast-forward to catch specific events.</p>
+                    </div>
+                    <div class="help-section">
+                        <h3>Investigation</h3>
+                        <p><strong>Examine</strong> objects to find clues. <strong>Talk</strong> to NPCs — new dialogue options unlock as you discover evidence. <strong>Eavesdrop</strong> on conversations by being in the right place at the right time.</p>
+                    </div>
+                    <div class="help-section">
+                        <h3>The Notebook</h3>
+                        <p>Press <strong>N</strong> to open your notebook. Track clues, NPC profiles, the timeline, and build your evidence board by connecting clues. When ready, make your accusation.</p>
+                    </div>
+                    <div class="help-section">
+                        <h3>Controls</h3>
+                        <p><strong>Click</strong> — Interact &nbsp; <strong>N</strong> — Notebook &nbsp; <strong>W</strong> — Wait &nbsp; <strong>F</strong> — Fast Forward &nbsp; <strong>A</strong> — Accuse &nbsp; <strong>Esc</strong> — Back</p>
+                    </div>
+                </div>
+                <button id="help-close" class="menu-btn">Got it</button>
+            </div>
+        </div>
+
+        <!-- Ending Screen -->
+        <div id="ending-screen" class="screen">
+            <div id="ending-content">
+                <div id="ending-title"></div>
+                <div id="ending-text"></div>
+                <div id="ending-stats"></div>
+                <button id="btn-play-again" class="menu-btn">Play Again</button>
+                <button id="btn-main-menu" class="menu-btn secondary">Main Menu</button>
+            </div>
+        </div>
+
+        <!-- Loop Transition -->
+        <div id="loop-transition" class="screen">
+            <div id="loop-transition-content">
+                <div id="loop-clock">12:00</div>
+                <div id="loop-message"></div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="notification"></div>
+
+        <!-- Eavesdrop Overlay -->
+        <div id="eavesdrop-overlay" class="screen">
+            <div id="eavesdrop-box">
+                <div id="eavesdrop-label">Eavesdropping...</div>
+                <div id="eavesdrop-speakers"></div>
+                <div id="eavesdrop-text"></div>
+                <div id="eavesdrop-prompt">Click to continue...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/npcs.js"></script>
+    <script src="js/dialogue.js"></script>
+    <script src="js/mystery.js"></script>
+    <script src="js/notebook.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
