@@ -31,6 +31,7 @@ const Engine = (() => {
         eavesdropsWitnessed: new Set(),
         bookshelfExamineCount: 0,
         started: false,
+        achievements: new Set(),
     };
 
     // ── Input State ──
@@ -127,6 +128,7 @@ const Engine = (() => {
         }
 
         UI.showEavesdrop(eavesdrop);
+        checkAchievements();
     }
 
     function triggerMidnight() {
@@ -180,6 +182,7 @@ const Engine = (() => {
             state.flags.found_secret_passage = true;
         }
 
+        checkAchievements();
         UI.updateHUD();
         World.enterLocation('your_room');
 
@@ -189,6 +192,11 @@ const Engine = (() => {
         }
 
         save();
+
+        // Show loop recap overlay (after loop 1, when player has context)
+        if (state.loop >= 1) {
+            UI.showLoopRecap();
+        }
     }
 
     // ── Location Movement ──
@@ -272,6 +280,7 @@ const Engine = (() => {
             loop: state.loop,
         });
 
+        checkAchievements();
         return true;
     }
 
@@ -319,10 +328,12 @@ const Engine = (() => {
 
         advanceTime(10);
         Dialogue.startConversation(npcId);
+        checkAchievements();
     }
 
     function addFact(fact) {
         state.knownFacts.add(fact);
+        checkAchievements();
     }
 
     function setFlag(flag) {
@@ -424,6 +435,7 @@ const Engine = (() => {
             bookshelfExamineCount: state.bookshelfExamineCount,
             npcTrust: state.npcTrust,
             visitedLocations: [...state.visitedLocations],
+            achievements: [...state.achievements],
             version: 1,
         };
         try {
@@ -453,6 +465,7 @@ const Engine = (() => {
             state.bookshelfExamineCount = data.bookshelfExamineCount || 0;
             state.npcTrust = data.npcTrust || {};
             state.visitedLocations = new Set(data.visitedLocations || []);
+            state.achievements = new Set(data.achievements || []);
             state.currentLoopEvents = [];
             state.talkedTo = new Set();
             state.started = true;
@@ -493,6 +506,7 @@ const Engine = (() => {
         state.talkedTo = new Set();
         state.eavesdropsWitnessed = new Set();
         state.bookshelfExamineCount = 0;
+        state.achievements = new Set();
         state.started = true;
     }
 
@@ -508,16 +522,112 @@ const Engine = (() => {
 
         // Check for prevention ending
         if (state.flags.evelyn_full_confession && state.loop >= 5 && state.time < 1380) {
+            unlockAchievement('prevention');
+            unlockAchievement('loop_breaker');
             return 'prevention';
         }
 
         // Check for clock secret ending
         if (suspect === 'clock' && state.discoveredEvidence.has('ancient_clock') && state.discoveredEvidence.has('tower_journal')) {
+            unlockAchievement('loop_breaker');
             return 'clock_secret';
         }
 
         const result = GameData.validateAccusation(suspect, accomplice, selectedEvidence);
+
+        // Achievement checks for endings
+        if (result === 'true_justice') {
+            unlockAchievement('true_detective');
+            unlockAchievement('loop_breaker');
+        }
+        if (result === 'prevention') {
+            unlockAchievement('prevention');
+            unlockAchievement('loop_breaker');
+        }
+        if (result === 'partial_truth' || result === 'clock_secret') {
+            unlockAchievement('loop_breaker');
+        }
+
         return result;
+    }
+
+    // ── Achievements System ──
+    const achievementDefs = {
+        first_clue:     { name: 'First Clue',     desc: 'Find your first evidence' },
+        ear_to_wall:    { name: 'Ear to the Wall', desc: 'Witness your first eavesdrop' },
+        profiler:       { name: 'Profiler',        desc: 'Meet all 10 NPCs' },
+        evidence_master:{ name: 'Evidence Master', desc: 'Find all evidence' },
+        web_of_lies:    { name: 'Web of Lies',     desc: 'Find all connections' },
+        time_student:   { name: 'Time Student',    desc: 'Complete 3 loops' },
+        time_master:    { name: 'Time Master',     desc: 'Complete 5 loops' },
+        confrontation:  { name: 'Confrontation',   desc: 'Confront Lady Evelyn with the poison vial' },
+        true_detective: { name: 'True Detective',  desc: 'Achieve the True Justice ending' },
+        clock_watcher:  { name: 'Clock Watcher',   desc: 'Discover the Ancient Clock' },
+        loop_breaker:   { name: 'Loop Breaker',    desc: 'Break the time loop (any good ending)' },
+        prevention:     { name: 'Prevention',      desc: 'Prevent the murder' },
+    };
+
+    function unlockAchievement(id) {
+        if (state.achievements.has(id)) return;
+        if (!achievementDefs[id]) return;
+        state.achievements.add(id);
+        notifyAchievement(achievementDefs[id].name);
+        save();
+    }
+
+    function notifyAchievement(name) {
+        const el = document.getElementById('notification');
+        el.textContent = `Achievement Unlocked: ${name}`;
+        el.className = 'show achievement';
+        Audio.playSound('evidence');
+        setTimeout(() => el.className = '', 5000);
+    }
+
+    function checkAchievements() {
+        // First Clue — any evidence discovered
+        if (state.discoveredEvidence.size >= 1) {
+            unlockAchievement('first_clue');
+        }
+
+        // Ear to the Wall — any eavesdrop witnessed
+        if (state.eavesdropsWitnessed.size >= 1) {
+            unlockAchievement('ear_to_wall');
+        }
+
+        // Profiler — met all 10 NPCs
+        if (Object.keys(state.notebook.profiles).length >= 10) {
+            unlockAchievement('profiler');
+        }
+
+        // Evidence Master — all evidence found
+        if (state.discoveredEvidence.size >= Object.keys(GameData.evidence).length) {
+            unlockAchievement('evidence_master');
+        }
+
+        // Web of Lies — all connections found
+        if (state.evidenceConnections.length >= GameData.connections.length) {
+            unlockAchievement('web_of_lies');
+        }
+
+        // Time Student — 3 loops completed
+        if (state.totalLoops >= 3) {
+            unlockAchievement('time_student');
+        }
+
+        // Time Master — 5 loops completed
+        if (state.totalLoops >= 5) {
+            unlockAchievement('time_master');
+        }
+
+        // Confrontation — confront Lady Evelyn with the poison vial
+        if (state.knownFacts.has('evelyn_caught')) {
+            unlockAchievement('confrontation');
+        }
+
+        // Clock Watcher — discover the Ancient Clock
+        if (state.discoveredEvidence.has('ancient_clock')) {
+            unlockAchievement('clock_watcher');
+        }
     }
 
     // Public API
@@ -528,6 +638,7 @@ const Engine = (() => {
         notify, notifyEvidence, showNarration,
         save, load, hasSave, clearSave, resetState,
         makeAccusation, triggerMidnight, startNewLoop,
-        checkEavesdrops,
+        checkEavesdrops, achievementDefs, checkAchievements,
+        unlockAchievement,
     };
 })();

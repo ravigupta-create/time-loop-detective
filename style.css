@@ -987,6 +987,94 @@ html, body {
 }
 
 /* ══════════════════════════════════
+   LOOP RECAP SCREEN
+   ══════════════════════════════════ */
+#loop-recap-screen {
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 7, 15, 0.92);
+    z-index: 75;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+#loop-recap-screen.active { opacity: 1; }
+
+#loop-recap-panel {
+    max-width: 500px;
+    width: 90%;
+    padding: 32px;
+    background: rgba(13, 13, 26, 0.95);
+    border: 1px solid var(--amber-dim);
+    border-top: 2px solid var(--amber);
+    text-align: center;
+    backdrop-filter: blur(8px);
+}
+
+#loop-recap-header {
+    font-family: var(--font-display);
+    font-size: 28px;
+    color: var(--amber);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(212, 160, 32, 0.3);
+}
+
+#loop-recap-divider {
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--amber-dim), transparent);
+    margin: 16px auto;
+}
+
+#loop-recap-body {
+    text-align: left;
+    margin-bottom: 24px;
+}
+
+#loop-recap-evidence {
+    padding: 10px 16px;
+    margin-bottom: 10px;
+    background: rgba(212, 160, 32, 0.05);
+    border-left: 3px solid var(--amber-dim);
+    font-size: 13px;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+#loop-recap-facts {
+    padding: 10px 16px;
+    margin-bottom: 10px;
+    background: rgba(136, 85, 187, 0.05);
+    border-left: 3px solid var(--purple);
+    font-size: 13px;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+#loop-recap-facts .recap-fact {
+    margin-bottom: 2px;
+    color: var(--text-dim);
+    font-size: 12px;
+}
+#loop-recap-facts .recap-fact::before {
+    content: '\2022  ';
+    color: var(--purple);
+}
+
+#loop-recap-hint {
+    padding: 10px 16px;
+    background: rgba(68, 136, 204, 0.05);
+    border-left: 3px solid var(--blue-dim);
+    font-size: 13px;
+    color: var(--blue-accent);
+    font-style: italic;
+    line-height: 1.6;
+}
+
+#loop-recap-panel .menu-btn {
+    margin-top: 8px;
+}
+
+/* ══════════════════════════════════
    NOTIFICATION
    ══════════════════════════════════ */
 #notification {
@@ -1013,6 +1101,11 @@ html, body {
 #notification.evidence {
     border-color: var(--crimson);
     color: var(--crimson-bright);
+}
+#notification.achievement {
+    border-color: #8855bb;
+    color: #bb88ee;
+    background: rgba(136, 85, 187, 0.15);
 }
 
 /* ══════════════════════════════════

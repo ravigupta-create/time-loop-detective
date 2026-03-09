@@ -416,6 +416,52 @@ const UI = (() => {
         return map[key] || key;
     }
 
+    // ── Loop Recap ──
+    function showLoopRecap() {
+        Engine.state.screen = 'loop_recap';
+        const screen = document.getElementById('loop-recap-screen');
+        screen.classList.add('active');
+
+        // Loop number
+        document.getElementById('loop-recap-header').textContent = `Loop ${Engine.state.loop + 1}`;
+
+        // Evidence count
+        const evidenceCount = Mystery.getEvidenceCount();
+        const totalEvidence = Mystery.getTotalEvidence();
+        const evidenceEl = document.getElementById('loop-recap-evidence');
+        evidenceEl.innerHTML = `<strong style="color:var(--amber)">Evidence:</strong> ${evidenceCount} / ${totalEvidence} pieces found`;
+
+        // Key facts learned
+        const factsEl = document.getElementById('loop-recap-facts');
+        const facts = [...Engine.state.knownFacts];
+        if (facts.length === 0) {
+            factsEl.innerHTML = '<strong style="color:var(--purple)">Key Facts:</strong> None yet — talk to NPCs and examine objects.';
+        } else {
+            const displayFacts = facts.slice(-5); // Show up to 5 most recent
+            let factsHTML = `<strong style="color:var(--purple)">Key Facts:</strong> ${facts.length} learned`;
+            if (facts.length > 5) {
+                factsHTML += ` (showing latest ${displayFacts.length})`;
+            }
+            factsHTML += '<br>';
+            displayFacts.forEach(f => {
+                const formatted = f.replace(/_/g, ' ');
+                factsHTML += `<div class="recap-fact">${formatted}</div>`;
+            });
+            factsEl.innerHTML = factsHTML;
+        }
+
+        // Hint
+        const hintEl = document.getElementById('loop-recap-hint');
+        const hint = Mystery.getHint();
+        hintEl.innerHTML = `<strong style="color:var(--blue-accent)">Hint:</strong> ${hint}`;
+
+        // Begin Loop button
+        document.getElementById('btn-begin-loop').onclick = () => {
+            screen.classList.remove('active');
+            Engine.state.screen = 'playing';
+        };
+    }
+
     // ── Examine Text ──
     function showExamineText(text) {
         const descEl = document.getElementById('room-description');
@@ -444,7 +490,7 @@ const UI = (() => {
         showWait, showFastForward, hideFastForward,
         showAccusation, hideAccusation,
         showLoopTransition, showEavesdrop,
-        showExamineText, showHelp, hideHelp,
+        showExamineText, showLoopRecap, showHelp, hideHelp,
         onEvidenceToggle, hideAllScreens,
     };
 })();

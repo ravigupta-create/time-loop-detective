@@ -999,7 +999,24 @@ const dialogues = {
             text: 'She sits. The mask falls away entirely. "Thirty years. He\'s controlled every aspect of my life. My money. My friends. My freedom." Tears streak her makeup. "Yes. I\'ve been poisoning him. Slowly. And tonight, Rex will finish it." She looks at the clock. "Unless you stop us."',
             reveals: ['evelyn_full_confession'],
             responses: [
+                { text: 'I will stop you. Tonight.', next: 'prevent_vow' },
                 { text: 'Leave.', next: null },
+            ]
+        },
+        prevent_vow: {
+            text: 'She stares at you. "You can try. But Rex is already in position. The brandy is already drugged." A strange light enters her eyes — hope? Relief? "You\'d have to stop Rex. Keep Victor away from the Library after eleven. And somehow make this right." She pauses. "Can you really do that?"',
+            reveals: ['prevention_path'],
+            responses: [
+                { text: 'I\'ve done this before. More times than you know.', next: 'prevention_loop' },
+                { text: 'Leave.', next: null },
+            ]
+        },
+        prevention_loop: {
+            text: 'Her eyes widen. "You... you remember, don\'t you? The loops. The clock." She touches your hand. "My God. You\'ve been living this day over and over." For the first time, genuine compassion crosses her face. "Then you know how it feels to be trapped. Help me find another way out."',
+            reveals: ['evelyn_knows_loops'],
+            flags: ['prevention_ready'],
+            responses: [
+                { text: 'There is another way. I promise.', next: null },
             ]
         },
     },

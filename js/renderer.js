@@ -144,13 +144,22 @@ const Renderer = (() => {
         // Particles
         updateAndRenderParticles();
 
+        // NPC indicators at bottom of scene
+        renderNPCIndicators();
+
         // Rain if outdoor or window
         if (loc.ambience === 'garden' || loc.ambience === 'rain') {
             renderRain(0.3);
         }
 
+        // Minimap in corner
+        renderMinimapOverlay();
+
         // Vignette
         renderVignette();
+
+        // Scanlines for CRT feel
+        renderScanlines();
     }
 
     function renderRoomDetails(loc, brightness, warmth) {
@@ -769,6 +778,130 @@ const Renderer = (() => {
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         return `rgb(${Math.floor(r * factor)}, ${Math.floor(g * factor)}, ${Math.floor(b * factor)})`;
+    }
+
+    // ── NPC Indicators ──
+    function renderNPCIndicators() {
+        const npcsHere = Engine.getNPCsAtLocation(Engine.state.currentLocation, Engine.state.time);
+        if (npcsHere.length === 0) return;
+
+        const startX = width * 0.1;
+        const y = height * 0.48;
+
+        npcsHere.forEach((npc, i) => {
+            const x = startX + i * 50;
+
+            // Small character silhouette
+            const npcData = GameData.npcs[npc.id];
+            const color = npcData ? npcData.color : '#888';
+
+            // Body
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.ellipse(x, y - 8, 6, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.beginPath();
+            ctx.arc(x, y - 22, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Breathing animation
+            const breathe = Math.sin(time * 2 + i) * 0.5;
+            ctx.beginPath();
+            ctx.ellipse(x, y - 8 + breathe, 6, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 1;
+
+            // Name label
+            ctx.fillStyle = `rgba(200, 200, 212, 0.3)`;
+            ctx.font = '9px Courier New';
+            ctx.textAlign = 'center';
+            const name = npcData ? npcData.name.split(' ').pop() : '';
+            ctx.fillText(name, x, y + 8);
+        });
+        ctx.textAlign = 'start';
+    }
+
+    // ── Minimap Overlay (bottom-right corner) ──
+    function renderMinimapOverlay() {
+        const mw = 130;
+        const mh = 100;
+        const mx = width - mw - 16;
+        const my = height - mh - 80;
+
+        // Background
+        ctx.fillStyle = 'rgba(7, 7, 15, 0.7)';
+        ctx.fillRect(mx - 2, my - 2, mw + 4, mh + 4);
+        ctx.strokeStyle = 'rgba(212, 160, 32, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(mx - 2, my - 2, mw + 4, mh + 4);
+
+        // Draw minimap inline
+        const current = Engine.state.currentLocation;
+        const gameTime = Engine.state.time;
+
+        // Connections
+        ctx.strokeStyle = 'rgba(100, 100, 120, 0.2)';
+        ctx.lineWidth = 0.5;
+        for (const [locId, loc] of Object.entries(GameData.locations)) {
+            const pos = GameData.mapLayout[locId];
+            if (!pos) continue;
+            for (const exit of loc.exits) {
+                const toPos = GameData.mapLayout[exit.to];
+                if (!toPos) continue;
+                ctx.beginPath();
+                ctx.moveTo(mx + pos.x * mw, my + pos.y * mh);
+                ctx.lineTo(mx + toPos.x * mw, my + toPos.y * mh);
+                ctx.stroke();
+            }
+        }
+
+        // Nodes
+        for (const [locId, pos] of Object.entries(GameData.mapLayout)) {
+            const px = mx + pos.x * mw;
+            const py = my + pos.y * mh;
+            const isVisited = Engine.state.visitedLocations.has(locId);
+            const isCurrent = locId === current;
+
+            // NPC count indicator
+            const npcsHere = Engine.getNPCsAtLocation(locId, gameTime);
+            if (npcsHere.length > 0 && !isCurrent && Engine.state.loop >= 1) {
+                ctx.fillStyle = 'rgba(212, 160, 32, 0.15)';
+                ctx.beginPath();
+                ctx.arc(px, py, 4 + npcsHere.length, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (isCurrent) {
+                // Pulsing current location
+                const pulse = 3 + Math.sin(time * 3) * 1.5;
+                ctx.fillStyle = '#d4a020';
+                ctx.beginPath();
+                ctx.arc(px, py, pulse, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (isVisited) {
+                ctx.fillStyle = '#444455';
+                ctx.beginPath();
+                ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = '#1a1a2a';
+                ctx.beginPath();
+                ctx.arc(px, py, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // ── Scanlines ──
+    function renderScanlines() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+        for (let y = 0; y < height; y += 3) {
+            ctx.fillRect(0, y, width, 1);
+        }
     }
 
     // ── Minimap ──

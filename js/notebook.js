@@ -356,6 +356,25 @@ const Notebook = (() => {
             </div>
         </div>`;
 
+        // Achievements
+        const achievements = Engine.state.achievements;
+        const defs = Engine.achievementDefs;
+        const totalAch = Object.keys(defs).length;
+        const unlockedAch = achievements.size;
+        html += `<div style="padding:10px;margin-bottom:16px;background:rgba(136,85,187,0.05);border-left:3px solid #8855bb;font-size:12px">
+            <div style="color:#8855bb;margin-bottom:8px;font-weight:bold">Achievements — ${unlockedAch}/${totalAch}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
+        for (const [id, def] of Object.entries(defs)) {
+            const unlocked = achievements.has(id);
+            const color = unlocked ? '#d4a020' : '#3a3a50';
+            const icon = unlocked ? '\u2605' : '\u2606';
+            html += `<div style="padding:6px 8px;background:rgba(0,0,0,0.2);border:1px solid ${color};border-radius:4px;opacity:${unlocked ? '1' : '0.5'}">
+                <div style="color:${color};font-size:11px;font-weight:bold">${icon} ${def.name}</div>
+                <div style="color:#6a6a80;font-size:10px;margin-top:2px">${def.desc}</div>
+            </div>`;
+        }
+        html += '</div></div>';
+
         // Existing theories
         if (theories.length > 0) {
             theories.slice().reverse().forEach(theory => {
