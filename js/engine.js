@@ -204,8 +204,6 @@ const Engine = (() => {
     function moveToLocation(locationId) {
         if (!GameData.locations[locationId]) return;
 
-        const loc = GameData.locations[locationId];
-
         // Check requirements
         for (const exit of GameData.locations[state.currentLocation].exits) {
             if (exit.to === locationId && exit.requiresFlag && !state.flags[exit.requiresFlag]) {

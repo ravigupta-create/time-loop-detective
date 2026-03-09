@@ -85,81 +85,82 @@ const Renderer = (() => {
         updateLightning();
     }
 
-    // ── Room Rendering ──
+    // ── Room Transition State ──
+    let transitionAlpha = 0;
+    let transitionState = 'none'; // 'none' | 'out' | 'in'
+    let transitionCallback = null;
+
+    function startRoomTransition(callback) {
+        transitionState = 'out';
+        transitionAlpha = 0;
+        transitionCallback = callback;
+    }
+
+    function updateTransition() {
+        if (transitionState === 'out') {
+            transitionAlpha += 0.06;
+            if (transitionAlpha >= 1) {
+                transitionAlpha = 1;
+                transitionState = 'in';
+                if (transitionCallback) {
+                    transitionCallback();
+                    transitionCallback = null;
+                }
+            }
+        } else if (transitionState === 'in') {
+            transitionAlpha -= 0.05;
+            if (transitionAlpha <= 0) {
+                transitionAlpha = 0;
+                transitionState = 'none';
+            }
+        }
+    }
+
+    function isTransitioning() {
+        return transitionState !== 'none';
+    }
+
+    // ── Room Rendering (First-Person Perspective) ──
     function renderRoom() {
         const loc = GameData.locations[Engine.state.currentLocation];
         if (!loc) return;
-        const colors = loc.color;
         const gameTime = Engine.state.time;
-        const tod = GameData.getTimeOfDay(gameTime);
 
         // Time-based lighting
         const brightness = getTimeBrightness(gameTime);
         const warmth = getTimeWarmth(gameTime);
 
-        // Floor
-        const floorGrad = ctx.createLinearGradient(0, height * 0.55, 0, height);
-        floorGrad.addColorStop(0, adjustColor(colors.floor, brightness * 0.8));
-        floorGrad.addColorStop(1, adjustColor(colors.floor, brightness * 0.5));
-        ctx.fillStyle = floorGrad;
-        ctx.fillRect(0, height * 0.55, width, height * 0.45);
+        // Draw first-person perspective room via RoomViews
+        RoomViews.drawRoom(ctx, width, height, Engine.state.currentLocation, brightness, warmth, time, gameTime);
 
-        // Back wall
-        const wallGrad = ctx.createLinearGradient(0, 0, 0, height * 0.55);
-        wallGrad.addColorStop(0, adjustColor(colors.bg, brightness * 0.6));
-        wallGrad.addColorStop(1, adjustColor(colors.wall, brightness));
-        ctx.fillStyle = wallGrad;
-        ctx.fillRect(0, 0, width, height * 0.55);
-
-        // Wall/floor dividing line
-        ctx.strokeStyle = adjustColor(colors.accent, brightness * 0.5);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, height * 0.55);
-        ctx.lineTo(width, height * 0.55);
-        ctx.stroke();
-
-        // Wainscoting
-        ctx.fillStyle = adjustColor(colors.wall, brightness * 0.7);
-        ctx.fillRect(0, height * 0.35, width, height * 0.2);
-        ctx.strokeStyle = adjustColor(colors.accent, brightness * 0.3);
-        ctx.lineWidth = 1;
-        ctx.strokeRect(0, height * 0.35, width, height * 0.2);
-
-        // Room-specific decorations
-        renderRoomDetails(loc, brightness, warmth);
-
-        // Window with weather
-        if (loc.hasWindow) {
-            renderWindow(brightness, gameTime);
+        // NPC silhouettes within the room (returns hotspots for click detection)
+        Hotspots.removeDynamicHotspots('npc');
+        const npcHotspots = RoomViews.drawNPCSilhouettes(ctx, width, height, brightness, time);
+        if (npcHotspots.length > 0) {
+            Hotspots.addDynamicHotspots(npcHotspots);
         }
 
-        // Fireplace
-        if (loc.hasFireplace || loc.ambience === 'fire') {
-            renderFireplace(brightness);
-        }
-
-        // Ambient lighting
+        // Ambient lighting overlay
         renderLighting(loc, brightness, warmth, gameTime);
 
-        // Particles
+        // Particles (dust, embers)
         updateAndRenderParticles();
-
-        // NPC indicators at bottom of scene
-        renderNPCIndicators();
 
         // Fog for garden, cellar, tower
         if (loc.ambience === 'garden' || loc.ambience === 'cellar' || loc.ambience === 'tower') {
             renderFog();
         }
 
-        // Rain if outdoor or window
-        if (loc.ambience === 'garden' || loc.ambience === 'rain') {
-            renderRain(0.3);
+        // Rain if outdoor
+        if (loc.ambience === 'garden') {
+            renderRain(0.4);
         }
 
         // Lightning flashes
         updateLightning();
+
+        // Hotspot highlights and tooltips
+        Hotspots.render(ctx, width, height, time);
 
         // Minimap in corner
         renderMinimapOverlay();
@@ -167,358 +168,18 @@ const Renderer = (() => {
         // Vignette
         renderVignette();
 
-        // Scanlines for CRT feel
+        // Scanlines
         renderScanlines();
-    }
 
-    function renderRoomDetails(loc, brightness, warmth) {
-        const id = Engine.state.currentLocation;
-
-        switch (id) {
-            case 'grand_hallway':
-                // Chandelier
-                drawChandelier(width * 0.5, height * 0.08, brightness);
-                // Staircase
-                drawStaircase(width * 0.65, height * 0.2, brightness);
-                // Grandfather clock
-                drawGrandfatherClock(width * 0.15, height * 0.2, brightness);
-                // Portraits
-                for (let i = 0; i < 4; i++) {
-                    drawPortrait(width * (0.25 + i * 0.15), height * 0.12, brightness);
-                }
-                break;
-
-            case 'library':
-                // Bookshelves
-                drawBookshelf(width * 0.05, height * 0.05, width * 0.2, height * 0.5, brightness);
-                drawBookshelf(width * 0.75, height * 0.05, width * 0.2, height * 0.5, brightness);
-                // Desk
-                drawDesk(width * 0.4, height * 0.55, brightness);
-                break;
-
-            case 'study':
-                // Large desk
-                drawDesk(width * 0.35, height * 0.55, brightness);
-                // Safe (painting)
-                drawPainting(width * 0.7, height * 0.15, brightness);
-                // Bookshelves
-                drawBookshelf(width * 0.05, height * 0.1, width * 0.15, height * 0.4, brightness);
-                break;
-
-            case 'dining_room':
-                // Long table
-                drawDiningTable(width * 0.2, height * 0.55, width * 0.6, brightness);
-                // Candelabra
-                drawCandelabra(width * 0.5, height * 0.5, brightness);
-                break;
-
-            case 'kitchen':
-                // Counter
-                ctx.fillStyle = adjustColor('#2a2218', brightness);
-                ctx.fillRect(width * 0.1, height * 0.55, width * 0.5, height * 0.05);
-                // Shelves
-                for (let i = 0; i < 3; i++) {
-                    ctx.fillStyle = adjustColor('#1a1510', brightness * 0.8);
-                    ctx.fillRect(width * 0.15, height * (0.15 + i * 0.12), width * 0.3, height * 0.02);
-                }
-                break;
-
-            case 'drawing_room':
-                // Piano
-                drawPiano(width * 0.6, height * 0.4, brightness);
-                // Sofa
-                ctx.fillStyle = adjustColor('#2a1a2a', brightness);
-                ctx.fillRect(width * 0.15, height * 0.6, width * 0.25, height * 0.08);
-                break;
-
-            case 'ballroom':
-                // Chandelier (large)
-                drawChandelier(width * 0.5, height * 0.05, brightness);
-                drawChandelier(width * 0.3, height * 0.08, brightness * 0.7);
-                drawChandelier(width * 0.7, height * 0.08, brightness * 0.7);
-                break;
-
-            case 'garden':
-                // Trees/hedges
-                for (let i = 0; i < 5; i++) {
-                    drawTree(width * (0.1 + i * 0.2), height * 0.25, brightness);
-                }
-                // Greenhouse glow
-                ctx.fillStyle = `rgba(100, 180, 100, ${0.05 * brightness})`;
-                ctx.fillRect(width * 0.65, height * 0.3, width * 0.2, height * 0.2);
-                break;
-
-            case 'master_suite':
-                // Bed
-                ctx.fillStyle = adjustColor('#2a1a20', brightness);
-                ctx.fillRect(width * 0.3, height * 0.55, width * 0.35, height * 0.12);
-                ctx.fillStyle = adjustColor('#1a1015', brightness);
-                ctx.fillRect(width * 0.3, height * 0.53, width * 0.35, height * 0.04);
-                // Vanity
-                ctx.fillStyle = adjustColor('#2a2030', brightness);
-                ctx.fillRect(width * 0.1, height * 0.55, width * 0.12, height * 0.08);
-                break;
-
-            case 'wine_cellar':
-                // Arches
-                for (let i = 0; i < 3; i++) {
-                    drawArch(width * (0.2 + i * 0.25), height * 0.1, brightness);
-                }
-                // Wine racks
-                for (let i = 0; i < 4; i++) {
-                    ctx.fillStyle = adjustColor('#1a1510', brightness * 0.6);
-                    ctx.fillRect(width * (0.1 + i * 0.22), height * 0.3, width * 0.08, height * 0.35);
-                }
-                break;
-
-            case 'tower':
-                // Circular room feel
-                ctx.strokeStyle = adjustColor('#15152a', brightness);
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(width * 0.5, height * 0.4, width * 0.3, 0, Math.PI, true);
-                ctx.stroke();
-                // Ancient clock (center)
-                drawAncientClock(width * 0.5, height * 0.3, brightness);
-                // Telescope
-                drawTelescope(width * 0.75, height * 0.35, brightness);
-                break;
-
-            case 'your_room':
-                // Bed
-                ctx.fillStyle = adjustColor('#2a2030', brightness);
-                ctx.fillRect(width * 0.55, height * 0.55, width * 0.3, height * 0.1);
-                // Nightstand
-                ctx.fillStyle = adjustColor('#1a1510', brightness);
-                ctx.fillRect(width * 0.5, height * 0.58, width * 0.06, height * 0.06);
-                // Lamp glow
-                ctx.fillStyle = 'rgba(212, 160, 32, 0.1)';
-                ctx.beginPath();
-                ctx.arc(width * 0.53, height * 0.55, 40, 0, Math.PI * 2);
-                ctx.fill();
-                break;
+        // Room transition fade
+        updateTransition();
+        if (transitionAlpha > 0) {
+            ctx.fillStyle = `rgba(0, 0, 0, ${transitionAlpha})`;
+            ctx.fillRect(0, 0, width, height);
         }
     }
 
-    // ── Drawing Helpers ──
-    function drawChandelier(x, y, b) {
-        ctx.strokeStyle = adjustColor('#8b6914', b);
-        ctx.lineWidth = 2;
-        // Chain
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        // Base
-        ctx.fillStyle = adjustColor('#8b6914', b);
-        ctx.fillRect(x - 30, y, 60, 8);
-        // Candle glow
-        for (let i = -2; i <= 2; i++) {
-            ctx.fillStyle = `rgba(255, 200, 100, ${0.15 * b})`;
-            ctx.beginPath();
-            ctx.arc(x + i * 14, y - 5, 8, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    function drawStaircase(x, y, b) {
-        ctx.fillStyle = adjustColor('#1a1510', b);
-        for (let i = 0; i < 8; i++) {
-            ctx.fillRect(x + i * 8, y + height * 0.35 - i * 15, width * 0.15, 12);
-        }
-        // Railing
-        ctx.strokeStyle = adjustColor('#8b6914', b * 0.6);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x, y + height * 0.35);
-        ctx.lineTo(x + 64, y + height * 0.35 - 120);
-        ctx.stroke();
-    }
-
-    function drawGrandfatherClock(x, y, b) {
-        ctx.fillStyle = adjustColor('#2a1a0a', b);
-        ctx.fillRect(x, y, 40, height * 0.35);
-        // Clock face
-        ctx.fillStyle = adjustColor('#d4d0c0', b * 0.5);
-        ctx.beginPath();
-        ctx.arc(x + 20, y + 30, 15, 0, Math.PI * 2);
-        ctx.fill();
-        // Pendulum
-        const swing = Math.sin(time * 2) * 8;
-        ctx.strokeStyle = adjustColor('#8b6914', b);
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x + 20, y + 50);
-        ctx.lineTo(x + 20 + swing, y + 90);
-        ctx.stroke();
-        ctx.fillStyle = adjustColor('#8b6914', b);
-        ctx.beginPath();
-        ctx.arc(x + 20 + swing, y + 90, 5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    function drawPortrait(x, y, b) {
-        ctx.fillStyle = adjustColor('#2a1a0a', b * 0.8);
-        ctx.fillRect(x - 20, y - 15, 40, 50);
-        ctx.strokeStyle = adjustColor('#8b6914', b * 0.5);
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x - 22, y - 17, 44, 54);
-        // Face suggestion
-        ctx.fillStyle = adjustColor('#665544', b * 0.4);
-        ctx.beginPath();
-        ctx.arc(x, y + 5, 8, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    function drawBookshelf(x, y, w, h, b) {
-        ctx.fillStyle = adjustColor('#2a1a0a', b * 0.8);
-        ctx.fillRect(x, y, w, h);
-        // Shelves
-        const shelfCount = Math.floor(h / 30);
-        for (let i = 0; i < shelfCount; i++) {
-            const sy = y + i * (h / shelfCount);
-            ctx.fillStyle = adjustColor('#1a1510', b);
-            ctx.fillRect(x, sy, w, 3);
-            // Books
-            for (let j = 0; j < 6; j++) {
-                const bookH = 15 + Math.random() * 10;
-                const bookW = 4 + Math.random() * 4;
-                const colors = ['#8b0000', '#003366', '#2a4a2a', '#4a3a2a', '#2a2a4a', '#4a2a00'];
-                ctx.fillStyle = adjustColor(colors[j % colors.length], b * 0.6);
-                ctx.fillRect(x + 4 + j * (w / 7), sy + (h / shelfCount) - bookH - 3, bookW, bookH);
-            }
-        }
-    }
-
-    function drawDesk(x, y, b) {
-        ctx.fillStyle = adjustColor('#2a1a0a', b);
-        ctx.fillRect(x, y, width * 0.25, height * 0.04);
-        // Legs
-        ctx.fillRect(x + 5, y + height * 0.04, 5, height * 0.08);
-        ctx.fillRect(x + width * 0.25 - 10, y + height * 0.04, 5, height * 0.08);
-        // Lamp on desk
-        ctx.fillStyle = `rgba(212, 160, 32, ${0.15 * b})`;
-        ctx.beginPath();
-        ctx.arc(x + width * 0.2, y - 10, 25, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    function drawPainting(x, y, b) {
-        ctx.fillStyle = adjustColor('#1a1a2a', b * 0.5);
-        ctx.fillRect(x, y, 60, 45);
-        ctx.strokeStyle = adjustColor('#8b6914', b * 0.6);
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x - 2, y - 2, 64, 49);
-    }
-
-    function drawDiningTable(x, y, w, b) {
-        ctx.fillStyle = adjustColor('#2a1a0a', b);
-        ctx.fillRect(x, y, w, height * 0.03);
-        // Legs
-        ctx.fillRect(x + 10, y + height * 0.03, 5, height * 0.08);
-        ctx.fillRect(x + w - 15, y + height * 0.03, 5, height * 0.08);
-        // Table cloth edges
-        ctx.fillStyle = adjustColor('#ffffff', b * 0.1);
-        ctx.fillRect(x - 5, y - 2, w + 10, 4);
-    }
-
-    function drawCandelabra(x, y, b) {
-        ctx.fillStyle = adjustColor('#8b6914', b);
-        ctx.fillRect(x - 2, y, 4, 20);
-        ctx.fillRect(x - 12, y - 5, 24, 3);
-        // Flames
-        for (let i = -1; i <= 1; i++) {
-            ctx.fillStyle = `rgba(255, 200, 100, ${0.3 * b})`;
-            ctx.beginPath();
-            ctx.arc(x + i * 10, y - 10, 5, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    function drawPiano(x, y, b) {
-        ctx.fillStyle = adjustColor('#0a0a0a', b);
-        ctx.fillRect(x, y, width * 0.2, height * 0.12);
-        // Keys
-        ctx.fillStyle = adjustColor('#d4d0c0', b * 0.3);
-        ctx.fillRect(x + 5, y + height * 0.08, width * 0.19, height * 0.03);
-        // Black keys
-        for (let i = 0; i < 6; i++) {
-            ctx.fillStyle = adjustColor('#0a0a0a', b);
-            ctx.fillRect(x + 10 + i * 18, y + height * 0.08, 8, height * 0.02);
-        }
-    }
-
-    function drawTree(x, y, b) {
-        // Trunk
-        ctx.fillStyle = adjustColor('#1a1510', b * 0.5);
-        ctx.fillRect(x - 3, y + 20, 6, 30);
-        // Canopy (dark, winter)
-        ctx.fillStyle = adjustColor('#0a1a0a', b * 0.6);
-        ctx.beginPath();
-        ctx.arc(x, y + 10, 20, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    function drawArch(x, y, b) {
-        ctx.strokeStyle = adjustColor('#2a2018', b * 0.7);
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(x, y + height * 0.25, width * 0.1, Math.PI, 0);
-        ctx.stroke();
-    }
-
-    function drawAncientClock(x, y, b) {
-        // Mysterious glow
-        ctx.fillStyle = `rgba(68, 136, 204, ${0.1 + Math.sin(time * 2) * 0.05})`;
-        ctx.beginPath();
-        ctx.arc(x, y, 60, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Clock body
-        ctx.fillStyle = adjustColor('#2a2a40', b);
-        ctx.beginPath();
-        ctx.arc(x, y, 40, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = adjustColor('#4488cc', b);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, 40, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Symbols
-        for (let i = 0; i < 12; i++) {
-            const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-            const sx = x + Math.cos(angle) * 32;
-            const sy = y + Math.sin(angle) * 32;
-            ctx.fillStyle = `rgba(68, 136, 204, ${0.5 + Math.sin(time + i) * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Rotating hands
-        const handAngle = time * 0.5;
-        ctx.strokeStyle = adjustColor('#4488cc', b);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + Math.cos(handAngle) * 25, y + Math.sin(handAngle) * 25);
-        ctx.stroke();
-    }
-
-    function drawTelescope(x, y, b) {
-        ctx.fillStyle = adjustColor('#555566', b);
-        // Stand
-        ctx.fillRect(x, y + 20, 4, 30);
-        ctx.fillRect(x - 10, y + 48, 24, 4);
-        // Tube
-        ctx.save();
-        ctx.translate(x + 2, y + 20);
-        ctx.rotate(-0.4);
-        ctx.fillRect(-3, -30, 6, 35);
-        ctx.restore();
-    }
+    // (Old flat room drawing code removed — now handled by RoomViews module)
 
     // ── Lighting ──
     function renderLighting(loc, brightness, warmth, gameTime) {
@@ -561,91 +222,7 @@ const Renderer = (() => {
         }
     }
 
-    function renderWindow(brightness, gameTime) {
-        const wx = width * 0.85;
-        const wy = height * 0.1;
-        const ww = 60;
-        const wh = 80;
-
-        // Window frame
-        ctx.fillStyle = adjustColor('#1a1510', brightness);
-        ctx.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
-
-        // Sky through window (time-based)
-        const tod = GameData.getTimeOfDay(gameTime);
-        let skyColor;
-        switch (tod) {
-            case 'early_morning': skyColor = '#0a0a20'; break;
-            case 'morning': skyColor = '#1a2040'; break;
-            case 'late_morning': skyColor = '#2a3050'; break;
-            case 'afternoon': skyColor = '#3a4060'; break;
-            case 'late_afternoon': skyColor = '#2a2540'; break;
-            case 'evening': skyColor = '#1a1530'; break;
-            default: skyColor = '#0a0a15'; break;
-        }
-        ctx.fillStyle = skyColor;
-        ctx.fillRect(wx, wy, ww, wh);
-
-        // Rain on window
-        ctx.strokeStyle = 'rgba(150, 170, 200, 0.3)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 8; i++) {
-            const rx = wx + Math.random() * ww;
-            const ry = wy + ((time * 50 + i * 40) % wh);
-            ctx.beginPath();
-            ctx.moveTo(rx, ry);
-            ctx.lineTo(rx - 1, ry + 8);
-            ctx.stroke();
-        }
-
-        // Window cross
-        ctx.fillStyle = adjustColor('#1a1510', brightness);
-        ctx.fillRect(wx + ww / 2 - 1.5, wy, 3, wh);
-        ctx.fillRect(wx, wy + wh / 2 - 1.5, ww, 3);
-
-        // Faint light spill from window
-        const grad = ctx.createRadialGradient(wx + ww / 2, wy + wh / 2, 0, wx + ww / 2, wy + wh / 2, 100);
-        grad.addColorStop(0, 'rgba(150, 170, 200, 0.03)');
-        grad.addColorStop(1, 'rgba(150, 170, 200, 0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx - 50, wy - 30, ww + 100, wh + 60);
-    }
-
-    function renderFireplace(brightness) {
-        const fx = width * 0.45;
-        const fy = height * 0.35;
-        const fw = 60;
-        const fh = 50;
-
-        // Fireplace frame
-        ctx.fillStyle = adjustColor('#333333', brightness);
-        ctx.fillRect(fx - 10, fy - 10, fw + 20, fh + 10);
-
-        // Fire
-        ctx.fillStyle = '#1a0a00';
-        ctx.fillRect(fx, fy, fw, fh);
-
-        // Animated flames
-        for (let i = 0; i < 5; i++) {
-            const flameX = fx + 10 + i * 10;
-            const flameH = 15 + Math.sin(time * 5 + i * 2) * 8;
-            const grad = ctx.createLinearGradient(flameX, fy + fh, flameX, fy + fh - flameH);
-            grad.addColorStop(0, 'rgba(255, 100, 20, 0.8)');
-            grad.addColorStop(0.5, 'rgba(255, 200, 50, 0.6)');
-            grad.addColorStop(1, 'rgba(255, 255, 100, 0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.ellipse(flameX, fy + fh, 6, flameH, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Warm glow
-        const glowGrad = ctx.createRadialGradient(fx + fw / 2, fy + fh / 2, 0, fx + fw / 2, fy + fh / 2, 150);
-        glowGrad.addColorStop(0, 'rgba(255, 150, 50, 0.06)');
-        glowGrad.addColorStop(1, 'rgba(255, 150, 50, 0)');
-        ctx.fillStyle = glowGrad;
-        ctx.fillRect(fx - 120, fy - 80, fw + 240, fh + 160);
-    }
+    // (Old renderWindow and renderFireplace removed — now in RoomViews)
 
     // ── Rain ──
     function renderRain(opacity) {
@@ -789,50 +366,7 @@ const Renderer = (() => {
         return `rgb(${Math.floor(r * factor)}, ${Math.floor(g * factor)}, ${Math.floor(b * factor)})`;
     }
 
-    // ── NPC Indicators ──
-    function renderNPCIndicators() {
-        const npcsHere = Engine.getNPCsAtLocation(Engine.state.currentLocation, Engine.state.time);
-        if (npcsHere.length === 0) return;
-
-        const startX = width * 0.1;
-        const y = height * 0.48;
-
-        npcsHere.forEach((npc, i) => {
-            const x = startX + i * 50;
-
-            // Small character silhouette
-            const npcData = GameData.npcs[npc.id];
-            const color = npcData ? npcData.color : '#888';
-
-            // Body
-            ctx.fillStyle = color;
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.ellipse(x, y - 8, 6, 10, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Head
-            ctx.beginPath();
-            ctx.arc(x, y - 22, 5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Breathing animation
-            const breathe = Math.sin(time * 2 + i) * 0.5;
-            ctx.beginPath();
-            ctx.ellipse(x, y - 8 + breathe, 6, 10, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.globalAlpha = 1;
-
-            // Name label
-            ctx.fillStyle = `rgba(200, 200, 212, 0.3)`;
-            ctx.font = '9px Courier New';
-            ctx.textAlign = 'center';
-            const name = npcData ? npcData.name.split(' ').pop() : '';
-            ctx.fillText(name, x, y + 8);
-        });
-        ctx.textAlign = 'start';
-    }
+    // (Old NPC indicators removed — now full silhouettes via RoomViews.drawNPCSilhouettes)
 
     // ── Minimap Overlay (bottom-right corner) ──
     function renderMinimapOverlay() {
@@ -1016,5 +550,6 @@ const Renderer = (() => {
         init, startLoop, stopLoop, render,
         drawPortraitOnCanvas, renderMinimap,
         adjustColor,
+        startRoomTransition, isTransitioning,
     };
 })();

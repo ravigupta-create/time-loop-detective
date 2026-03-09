@@ -14,6 +14,7 @@
 
         // Initialize modules in order
         Renderer.init();
+        Hotspots.init(document.getElementById('game-canvas'));
         Engine.init();
         World.init();
         NPCs.init();

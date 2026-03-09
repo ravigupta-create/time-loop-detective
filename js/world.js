@@ -66,93 +66,76 @@ const World = (() => {
 
     function buildRoomActions(locationId) {
         const loc = GameData.locations[locationId];
-        const time = Engine.state.time;
+        const hotspots = [];
 
-        // Objects
-        const objContainer = document.getElementById('room-objects');
-        objContainer.innerHTML = '';
+        // ── Object hotspots ──
+        const objSlots = RoomViews.getObjectSlots(locationId);
+        let slotIdx = 0;
         loc.objects.forEach(obj => {
-            // Check if evidence requirements are met for visibility
-            if (obj.requiresFlag && !Engine.state.flags[obj.requiresFlag]) {
-                // Show the object but it won't reveal evidence
-            }
-            if (obj.requiresLoop && Engine.state.loop < obj.requiresLoop) {
-                // Don't show objects that require higher loop count
-                return;
-            }
+            if (obj.requiresLoop && Engine.state.loop < obj.requiresLoop) return;
+            const slot = objSlots[slotIdx];
+            slotIdx++;
+            if (!slot) return;
 
-            const btn = document.createElement('button');
-            btn.className = 'action-btn';
-            btn.textContent = `${obj.icon} Examine ${obj.name}`;
+            const hs = {
+                type: 'object',
+                label: `${obj.icon} Examine ${obj.name}`,
+                rect: slot.rect,
+                action: () => {
+                    Engine.examineObject(obj);
+                    setTimeout(() => refreshHotspots(locationId), 100);
+                },
+            };
 
-            // Highlight if has undiscovered evidence
+            // Evidence shimmer
             if (obj.evidence && !Engine.state.discoveredEvidence.has(obj.evidence)) {
                 const ev = GameData.evidence[obj.evidence];
                 if (!ev.requiresLoop || Engine.state.loop >= ev.requiresLoop) {
                     if (!obj.requiresFlag || Engine.state.flags[obj.requiresFlag]) {
-                        btn.classList.add('evidence-new');
+                        hs.hasEvidence = true;
+                        hs.evidenceId = obj.evidence;
                     }
                 }
             }
 
-            btn.addEventListener('click', () => {
-                Audio.playSound('click');
-                Engine.examineObject(obj);
-                // Rebuild actions after examining (evidence state may have changed)
-                setTimeout(() => buildRoomActions(locationId), 100);
+            hotspots.push(hs);
+        });
+
+        // ── Exit hotspots ──
+        const exitSlots = RoomViews.getExitSlots(locationId);
+        loc.exits.forEach((exit, i) => {
+            const slot = exitSlots[i];
+            if (!slot) return;
+
+            const locked = exit.requiresFlag && !Engine.state.flags[exit.requiresFlag];
+            hotspots.push({
+                type: 'exit',
+                label: locked ? `🔒 ${exit.label} (Locked)` : `→ ${exit.label}`,
+                rect: slot.rect,
+                action: locked ? () => Engine.notify('That area is locked.') : () => {
+                    // Fade transition then move
+                    Hotspots.setEnabled(false);
+                    Renderer.startRoomTransition(() => {
+                        Engine.moveToLocation(exit.to);
+                        Hotspots.setEnabled(true);
+                    });
+                },
             });
-            objContainer.appendChild(btn);
         });
 
-        // NPCs present
-        const npcContainer = document.getElementById('room-npcs');
-        npcContainer.innerHTML = '';
-        const npcsHere = Engine.getNPCsAtLocation(locationId, time);
-        npcsHere.forEach(npc => {
-            const btn = document.createElement('button');
-            btn.className = 'action-btn npc-btn';
-            btn.textContent = `💬 Talk to ${npc.name}`;
-            btn.title = npc.activity;
-            btn.addEventListener('click', () => {
-                Audio.playSound('click');
-                Engine.talkToNPC(npc.id);
-            });
-            npcContainer.appendChild(btn);
+        // NPC hotspots are added dynamically each frame by RoomViews.drawNPCSilhouettes
+        // via Hotspots.addDynamicHotspots in the render loop
 
-            // Show NPC activity hint
-            if (npc.activity) {
-                const hint = document.createElement('span');
-                hint.style.fontSize = '11px';
-                hint.style.color = '#6a6a80';
-                hint.style.display = 'block';
-                hint.style.textAlign = 'center';
-                hint.textContent = `(${npc.activity})`;
-                npcContainer.appendChild(hint);
-            }
-        });
+        Hotspots.setRoomHotspots(hotspots);
 
-        // Exits
-        const exitContainer = document.getElementById('room-exits');
-        exitContainer.innerHTML = '';
-        loc.exits.forEach(exit => {
-            const btn = document.createElement('button');
-            btn.className = 'action-btn exit-btn';
+        // Clear old HTML buttons
+        document.getElementById('room-objects').innerHTML = '';
+        document.getElementById('room-npcs').innerHTML = '';
+        document.getElementById('room-exits').innerHTML = '';
+    }
 
-            if (exit.requiresFlag && !Engine.state.flags[exit.requiresFlag]) {
-                btn.textContent = `🔒 ${exit.label}`;
-                btn.classList.add('locked');
-                btn.style.opacity = '0.4';
-                btn.style.cursor = 'not-allowed';
-                btn.title = 'Locked';
-            } else {
-                btn.textContent = `${exit.icon} → ${exit.label}`;
-                btn.addEventListener('click', () => {
-                    Audio.playSound('click');
-                    Engine.moveToLocation(exit.to);
-                });
-            }
-            exitContainer.appendChild(btn);
-        });
+    function refreshHotspots(locationId) {
+        buildRoomActions(locationId || Engine.state.currentLocation);
     }
 
     // ── Screen Management ──
@@ -181,6 +164,6 @@ const World = (() => {
     return {
         init, enterLocation, buildRoomActions,
         showScreen, hideScreen, hideAllGameScreens,
-        refreshActions,
+        refreshActions, refreshHotspots,
     };
 })();
