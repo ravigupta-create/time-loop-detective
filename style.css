@@ -925,7 +925,7 @@ html, body {
     align-items: center;
     justify-content: center;
     background: rgba(7, 7, 15, 0.9);
-    z-index: 60;
+    z-index: 110;
 }
 
 #help-panel {
