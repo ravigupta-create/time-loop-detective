@@ -66,7 +66,11 @@ func _try_load(path: String) -> bool:
 		print("[SaveManager] Failed to parse %s: %s" % [path, json.get_error_message()])
 		return false
 
-	var data: Dictionary = json.data
+	var raw_data: Variant = json.data
+	if not raw_data is Dictionary:
+		print("[SaveManager] Save data is not a Dictionary")
+		return false
+	var data: Dictionary = raw_data as Dictionary
 	if not _validate_save(data):
 		print("[SaveManager] Validation failed for %s" % path)
 		return false

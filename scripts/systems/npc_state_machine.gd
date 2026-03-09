@@ -280,7 +280,7 @@ func _get_nav_agent() -> NavigationAgent2D:
 
 func _get_npc_id() -> String:
 	if npc != null and "npc_id" in npc:
-		return npc.npc_id as String
+		return str(npc.npc_id)
 	return ""
 
 
