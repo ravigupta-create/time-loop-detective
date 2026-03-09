@@ -146,7 +146,7 @@ func get_npcs_at_location(location_id: int) -> Array[String]:
 	var result: Array[String] = []
 	for npc_id in npc_locations:
 		if npc_locations[npc_id] == location_id:
-			result.append(npc_id as String)
+			result.append(str(npc_id))
 	return result
 
 

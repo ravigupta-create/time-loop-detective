@@ -81,23 +81,24 @@ func _on_conspiracy_changed(new_value: int) -> void:
 
 
 func _check_milestones(progress: int) -> void:
-	# Tier 1 (25) — "Familiar Faces"
-	if progress >= Constants.CONSPIRACY_TIER_1 and "familiar_faces" not in _milestones_triggered:
+	var d: int = GameState.difficulty
+	# Tier 1 — "Familiar Faces"
+	if progress >= int(Constants.get_dp("tier_1", d)) and "familiar_faces" not in _milestones_triggered:
 		_milestones_triggered.append("familiar_faces")
 		_trigger_milestone("familiar_faces", 1)
 
-	# Tier 2 (50) — "Following the Money"
-	if progress >= Constants.CONSPIRACY_TIER_2 and "following_money" not in _milestones_triggered:
+	# Tier 2 — "Following the Money"
+	if progress >= int(Constants.get_dp("tier_2", d)) and "following_money" not in _milestones_triggered:
 		_milestones_triggered.append("following_money")
 		_trigger_milestone("following_money", 2)
 
-	# Tier 3 (75) — "The Device"
-	if progress >= Constants.CONSPIRACY_TIER_3 and "the_device" not in _milestones_triggered:
+	# Tier 3 — "The Device"
+	if progress >= int(Constants.get_dp("tier_3", d)) and "the_device" not in _milestones_triggered:
 		_milestones_triggered.append("the_device")
 		_trigger_milestone("the_device", 3)
 
-	# Tier 4 (90) — "The Truth"
-	if progress >= Constants.CONSPIRACY_TIER_4 and "the_truth" not in _milestones_triggered:
+	# Tier 4 — "The Truth"
+	if progress >= int(Constants.get_dp("tier_4", d)) and "the_truth" not in _milestones_triggered:
 		_milestones_triggered.append("the_truth")
 		_trigger_milestone("the_truth", 4)
 
@@ -186,7 +187,7 @@ func _on_endgame_step_completed(step_id: String) -> void:
 	var current_time := TimeManager.current_time
 	for step in ENDGAME_STEPS:
 		if step["id"] == step_id:
-			if current_time >= step["time_window"][0] and current_time <= step["time_window"][1]:
+			if current_time >= _scale_time(step["time_window"][0]) and current_time <= _scale_time(step["time_window"][1]):
 				completed_steps[step_id] = true
 				var done_count := completed_steps.size()
 				EventBus.notification_queued.emit("Step complete: %s (%d/6)" % [step["description"].left(30), done_count], "clue")
@@ -220,6 +221,12 @@ func _trigger_victory() -> void:
 	})
 
 
+## Scale a time window designed for 600s to the current difficulty's loop duration.
+func _scale_time(t: float) -> float:
+	var loop_dur: float = float(Constants.get_dp("loop_duration", GameState.difficulty))
+	return t * loop_dur / 600.0
+
+
 ## Check if a specific endgame step can be attempted right now.
 func can_attempt_step(step_id: String) -> bool:
 	if not is_endgame_active:
@@ -229,7 +236,7 @@ func can_attempt_step(step_id: String) -> bool:
 	var current_time := TimeManager.current_time
 	for step in ENDGAME_STEPS:
 		if step["id"] == step_id:
-			return current_time >= step["time_window"][0] and current_time <= step["time_window"][1]
+			return current_time >= _scale_time(step["time_window"][0]) and current_time <= _scale_time(step["time_window"][1])
 	return false
 
 

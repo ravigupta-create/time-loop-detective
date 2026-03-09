@@ -88,7 +88,7 @@ func play_loop_reset() -> void:
 	_tween.tween_callback(func():
 		var loop_label := Label.new()
 		loop_label.name = "LoopText"
-		loop_label.text = "Loop %d" % (GameState.current_loop + 1)
+		loop_label.text = "Loop %d" % GameState.current_loop
 		loop_label.position = Vector2(0, 150)
 		loop_label.size = Vector2(640, 30)
 		loop_label.add_theme_font_size_override("font_size", 16)

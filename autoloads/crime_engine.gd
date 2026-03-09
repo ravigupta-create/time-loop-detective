@@ -93,7 +93,11 @@ func _instantiate_crime(template: Dictionary) -> Dictionary:
 			print("[CrimeEngine] Cannot fill role %d for %s, skipping crime" % [role_type, template["id"]])
 			return {}
 
-	var start_time := _rng.randf_range(template["time_window"][0], template["time_window"][1])
+	var loop_dur: float = float(Constants.get_dp("loop_duration", GameState.difficulty))
+	var time_scale_factor: float = loop_dur / 600.0
+	var start_time := _rng.randf_range(
+		template["time_window"][0] * time_scale_factor,
+		template["time_window"][1] * time_scale_factor)
 	var evidence := _generate_evidence(template, cast, crime_id)
 
 	var crime := {
@@ -228,9 +232,11 @@ func _apply_variation(crime: Dictionary) -> void:
 	# Slightly modify crime timing each loop so the perpetrator isn't always
 	# in the same place at the same second.
 	var d: int = GameState.difficulty
+	var loop_dur: float = float(Constants.get_dp("loop_duration", d))
+	var max_time: float = loop_dur - 50.0
 	var jitter: float = float(Constants.get_dp("crime_jitter", d))
 	crime["start_time"] += _rng.randf_range(-jitter, jitter)
-	crime["start_time"] = clampf(crime["start_time"], 60.0, 550.0)
+	crime["start_time"] = clampf(crime["start_time"], 60.0, max_time)
 
 	# If the player warned the victim in a previous loop, the perpetrator
 	# adapts by shifting their timing forward.
@@ -239,7 +245,7 @@ func _apply_variation(crime: Dictionary) -> void:
 	if not victim_id.is_empty():
 		for intervention in GameState.intervention_history:
 			if intervention.get("type") == Enums.InterventionType.WARN_NPC:
-				crime["start_time"] = clampf(crime["start_time"] + adapt, 60.0, 550.0)
+				crime["start_time"] = clampf(crime["start_time"] + adapt, 60.0, max_time)
 				break
 
 
@@ -291,7 +297,8 @@ func _on_crime_intervened(crime_id: String, intervention_type: int) -> void:
 					var perp_id: String = crime["cast"].get(Enums.CrimeRole.PERPETRATOR, "")
 					if not perp_id.is_empty():
 						EventBus.npc_state_changed.emit(perp_id, -1, Enums.NPCState.FLEEING)
-					crime["start_time"] = clampf(crime["start_time"] - 30.0, 60.0, 550.0)
+					var max_t: float = float(Constants.get_dp("loop_duration", GameState.difficulty)) - 50.0
+					crime["start_time"] = clampf(crime["start_time"] - 30.0, 60.0, max_t)
 					outcome_string = "call_police_tipped_off"
 					print("[CrimeEngine] Crime %s: Hale corrupt — conspirators warned" % crime_id)
 				else:
@@ -356,7 +363,8 @@ func _on_crime_intervened(crime_id: String, intervention_type: int) -> void:
 
 			Enums.InterventionType.DISTRACT:
 				# Delays the crime by 30 seconds
-				crime["start_time"] = clampf(crime["start_time"] + 30.0, 60.0, 550.0)
+				var max_t2: float = float(Constants.get_dp("loop_duration", GameState.difficulty)) - 50.0
+				crime["start_time"] = clampf(crime["start_time"] + 30.0, 60.0, max_t2)
 				outcome_string = "distract_delayed_30s"
 				print("[CrimeEngine] Crime %s delayed by 30s via distraction" % crime_id)
 
@@ -884,7 +892,7 @@ func _init_crime_templates() -> void:
 		"required_roles": [
 			{"role": Enums.CrimeRole.PERPETRATOR, "preferred_npcs": [Constants.NPC_MAYOR]},
 			{"role": Enums.CrimeRole.ACCOMPLICE, "preferred_npcs": [Constants.NPC_VICTOR]},
-			{"role": Enums.CrimeRole.ACCOMPLICE, "preferred_npcs": [Constants.NPC_HALE]}
+			{"role": Enums.CrimeRole.WITNESS, "preferred_npcs": [Constants.NPC_HALE]}
 		],
 		"stages": [
 			{"time_offset": 0.0, "action": "gather_forces", "involves_role": Enums.CrimeRole.PERPETRATOR},

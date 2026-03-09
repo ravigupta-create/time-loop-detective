@@ -15,10 +15,10 @@ static func evaluate(npc_id: String, current_time: float, schedule: Array[Dictio
 	for entry in schedule:
 		if current_time >= entry["start_time"] and current_time < entry["end_time"]:
 			var result := {
-				"location": entry["location"] as int,
+				"location": int(entry["location"]),
 				"position": entry["position"] as Vector2,
-				"activity": entry["activity"] as String,
-				"state":    entry["state"] as int,
+				"activity": str(entry["activity"]),
+				"state":    int(entry["state"]),
 			}
 			# Apply weather overrides for outdoor locations in bad weather
 			result = _apply_weather_override(npc_id, result)
@@ -28,10 +28,10 @@ static func evaluate(npc_id: String, current_time: float, schedule: Array[Dictio
 	if schedule.size() > 0:
 		var last: Dictionary = schedule[schedule.size() - 1]
 		return {
-			"location": last["location"] as int,
+			"location": int(last["location"]),
 			"position": last["position"] as Vector2,
-			"activity": last["activity"] as String,
-			"state":    last["state"] as int,
+			"activity": str(last["activity"]),
+			"state":    int(last["state"]),
 		}
 
 	return {
@@ -115,7 +115,7 @@ static func is_interruptible(npc_id: String, current_time: float) -> bool:
 	var schedule := get_schedule_for_npc(npc_id)
 	for entry in schedule:
 		if current_time >= entry["start_time"] and current_time < entry["end_time"]:
-			return entry["interruptible"] as bool
+			return bool(entry["interruptible"])
 	return true
 
 

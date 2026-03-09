@@ -714,8 +714,8 @@ func _build_timeline_tab() -> void:
 	var timeline_x_offset: float = 16.0
 	for i in range(0, 11):
 		var time_sec: float = i * 60.0
-		var x_pos: float = timeline_x_offset + (time_sec / Constants.LOOP_DURATION) * timeline_width
-		var game_hours := 6.0 + (time_sec / Constants.LOOP_DURATION) * 18.0
+		var x_pos: float = timeline_x_offset + (time_sec / float(Constants.get_dp("loop_duration", GameState.difficulty))) * timeline_width
+		var game_hours := 6.0 + (time_sec / float(Constants.get_dp("loop_duration", GameState.difficulty))) * 18.0
 		var hours := int(game_hours)
 		var period := "AM" if hours < 12 else "PM"
 		var display_hours := hours % 12
@@ -774,7 +774,7 @@ func _build_timeline_tab() -> void:
 		for entry in entries:
 			var entry_time: float = entry.get("time", 0.0)
 			var entry_loop: int = entry.get("loop", GameState.current_loop)
-			var x_pos: float = timeline_x_offset + (entry_time / Constants.LOOP_DURATION) * timeline_width
+			var x_pos: float = timeline_x_offset + (entry_time / float(Constants.get_dp("loop_duration", GameState.difficulty))) * timeline_width
 
 			var dot := ColorRect.new()
 			if entry_loop == GameState.current_loop:
@@ -795,7 +795,7 @@ func _build_timeline_tab() -> void:
 		npc_row_y += row_height
 
 	# Current time indicator
-	var current_x: float = timeline_x_offset + (TimeManager.current_time / Constants.LOOP_DURATION) * timeline_width
+	var current_x: float = timeline_x_offset + (TimeManager.current_time / float(Constants.get_dp("loop_duration", GameState.difficulty))) * timeline_width
 	var time_indicator := ColorRect.new()
 	time_indicator.color = COLOR_RED_ACCENT
 	time_indicator.position = Vector2(current_x, time_labels_y + 11)
@@ -831,7 +831,7 @@ func _toggle_past_loops() -> void:
 
 
 func _format_time(seconds: float) -> String:
-	var game_hours := 6.0 + (seconds / Constants.LOOP_DURATION) * 18.0
+	var game_hours := 6.0 + (seconds / float(Constants.get_dp("loop_duration", GameState.difficulty))) * 18.0
 	var hours := int(game_hours)
 	var minutes := int((game_hours - hours) * 60.0)
 	var period := "AM" if hours < 12 else "PM"

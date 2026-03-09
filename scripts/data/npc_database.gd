@@ -18,13 +18,13 @@ static func get_all_npc_ids() -> Array[String]:
 	_ensure_init()
 	var ids: Array[String] = []
 	for key in _npc_data.keys():
-		ids.append(key as String)
+		ids.append(str(key))
 	return ids
 
 static func get_npc_name(npc_id: String) -> String:
 	_ensure_init()
 	var data: Dictionary = _npc_data.get(npc_id, {})
-	return data.get("name", "Unknown") as String
+	return str(data.get("name", "Unknown"))
 
 static func _build_database() -> void:
 	_build_frank()

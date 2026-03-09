@@ -59,8 +59,8 @@ func _setup_navigation() -> void:
 		Vector2(location_width * Constants.TILE_SIZE - margin, location_height * Constants.TILE_SIZE - margin),
 		Vector2(margin, location_height * Constants.TILE_SIZE - margin)
 	])
-	nav_poly.add_outline(outline)
-	nav_poly.make_polygons_from_outlines()
+	nav_poly.vertices = outline
+	nav_poly.add_polygon(PackedInt32Array([0, 1, 2, 3]))
 	nav_region.navigation_polygon = nav_poly
 
 

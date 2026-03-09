@@ -21,7 +21,7 @@ var conspiracy_progress: int = 0
 var conspiracy_milestones: Array[String] = [] # unlocked story beats
 
 # Difficulty
-var difficulty: int = 1  # 0=Easy, 1=Medium, 2=Hard, 3=Extreme
+var difficulty: int = 1  # 0=Easy, 1=Normal, 2=Medium, 3=Hard, 4=Extreme
 
 # Loop tracking
 var current_loop: int = 1
@@ -143,7 +143,7 @@ func _check_auto_deductions() -> void:
 	for clue_id in discovered_clues:
 		var clue: Dictionary = discovered_clues[clue_id]
 		if clue.get("category") == Enums.ClueCategory.TESTIMONY:
-			var npc := clue.get("source_npc", "") as String
+			var npc: String = str(clue.get("source_npc", ""))
 			if npc not in testimonies:
 				testimonies[npc] = []
 			testimonies[npc].append(clue)

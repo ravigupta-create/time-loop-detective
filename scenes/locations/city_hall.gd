@@ -40,7 +40,7 @@ func _setup_doors() -> void:
 		Vector2(ts, 14 * ts), Vector2(16, 32))
 
 	# Basement door - only accessible when conspiracy progress is high enough
-	if GameState.conspiracy_progress >= Constants.CONSPIRACY_TIER_3:
+	if GameState.conspiracy_progress >= int(Constants.get_dp("tier_3", GameState.difficulty)):
 		_add_basement_door()
 	else:
 		_add_locked_basement_indicator()
@@ -49,7 +49,7 @@ func _setup_doors() -> void:
 
 
 func _on_conspiracy_progress(new_value: int) -> void:
-	if new_value >= Constants.CONSPIRACY_TIER_3:
+	if new_value >= int(Constants.get_dp("tier_3", GameState.difficulty)):
 		_add_basement_door()
 		# Remove locked indicator
 		var locked := get_node_or_null("LockedBasement")

@@ -198,7 +198,7 @@ func _get_relationship_type(npc_data: Dictionary, target_id: String) -> int:
 	var relationships: Array = npc_data.get("relationships", [])
 	for rel in relationships:
 		if rel.get("target", "") == target_id:
-			return rel.get("type", Enums.RelationshipType.UNKNOWN) as int
+			return int(rel.get("type", Enums.RelationshipType.UNKNOWN))
 	return Enums.RelationshipType.UNKNOWN
 
 
