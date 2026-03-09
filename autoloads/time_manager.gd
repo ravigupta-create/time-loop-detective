@@ -17,7 +17,7 @@ func _ready() -> void:
 
 
 func _get_loop_duration() -> float:
-	return Constants.get_dp("loop_duration", GameState.difficulty)
+	return float(Constants.get_dp("loop_duration", GameState.difficulty))
 
 
 func _process(delta: float) -> void:
@@ -35,7 +35,7 @@ func _process(delta: float) -> void:
 		_check_time_of_day()
 
 	# Countdown warning
-	var countdown_start := _get_loop_duration() - Constants.get_dp("countdown_offset", GameState.difficulty)
+	var countdown_start: float = _get_loop_duration() - float(Constants.get_dp("countdown_offset", GameState.difficulty))
 	if current_time >= countdown_start:
 		EventBus.loop_ending_soon.emit(_get_loop_duration() - current_time)
 

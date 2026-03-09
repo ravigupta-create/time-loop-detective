@@ -418,7 +418,7 @@ func _show_current_line() -> void:
 
 	# Check truthfulness - if lying and we know it, tint the speaker name
 	var is_truthful: bool = line.get("truthful", true)
-	var auto_detect: bool = Constants.get_dp("auto_lie_detect", GameState.difficulty) as bool
+	var auto_detect: bool = bool(Constants.get_dp("auto_lie_detect", GameState.difficulty))
 	if not is_truthful and auto_detect and _player_has_contradicting_evidence(line):
 		_speaker_label.add_theme_color_override("font_color", COLOR_LIE_DETECTED)
 	else:
@@ -494,7 +494,7 @@ func _check_present_evidence_option() -> void:
 
 	var line: Dictionary = _current_lines[current_line_index]
 	var is_truthful: bool = line.get("truthful", true)
-	var auto_detect: bool = Constants.get_dp("auto_lie_detect", GameState.difficulty) as bool
+	var auto_detect: bool = bool(Constants.get_dp("auto_lie_detect", GameState.difficulty))
 
 	if not is_truthful and auto_detect and _player_has_contradicting_evidence(line):
 		var present_btn := Button.new()

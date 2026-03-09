@@ -29,9 +29,9 @@ func _on_time_tick(current_time: float) -> void:
 func _generate_crimes_for_loop() -> void:
 	var available := _get_available_templates()
 	var d: int = GameState.difficulty
-	var count := _rng.randi_range(
-		Constants.get_dp("min_crimes", d) as int,
-		Constants.get_dp("max_crimes", d) as int)
+	var count: int = _rng.randi_range(
+		int(Constants.get_dp("min_crimes", d)),
+		int(Constants.get_dp("max_crimes", d)))
 
 	# Always include one conspiracy-connected crime if progress allows
 	var conspiracy_crime := _pick_conspiracy_crime(available)
@@ -61,13 +61,13 @@ func _get_available_templates() -> Array[Dictionary]:
 			Enums.CrimeTier.EARLY:
 				result.append(tmpl)
 			Enums.CrimeTier.MID:
-				if GameState.conspiracy_progress >= (Constants.get_dp("tier_1", d) as int):
+				if GameState.conspiracy_progress >= int(Constants.get_dp("tier_1", d)):
 					result.append(tmpl)
 			Enums.CrimeTier.LATE:
-				if GameState.conspiracy_progress >= (Constants.get_dp("tier_2", d) as int):
+				if GameState.conspiracy_progress >= int(Constants.get_dp("tier_2", d)):
 					result.append(tmpl)
 			Enums.CrimeTier.ENDGAME:
-				if GameState.conspiracy_progress >= (Constants.get_dp("tier_4", d) as int):
+				if GameState.conspiracy_progress >= int(Constants.get_dp("tier_4", d)):
 					result.append(tmpl)
 	return result
 
@@ -162,7 +162,7 @@ func _cast_roles(template: Dictionary) -> Dictionary:
 
 func _generate_evidence(template: Dictionary, cast: Dictionary, crime_id: String) -> Array[Dictionary]:
 	var evidence: Array[Dictionary] = []
-	var max_ev: int = Constants.get_dp("max_evidence", GameState.difficulty) as int
+	var max_ev: int = int(Constants.get_dp("max_evidence", GameState.difficulty))
 	for ev_tmpl in template.get("evidence_templates", []):
 		if evidence.size() >= max_ev:
 			break
@@ -228,13 +228,13 @@ func _apply_variation(crime: Dictionary) -> void:
 	# Slightly modify crime timing each loop so the perpetrator isn't always
 	# in the same place at the same second.
 	var d: int = GameState.difficulty
-	var jitter: float = Constants.get_dp("crime_jitter", d) as float
+	var jitter: float = float(Constants.get_dp("crime_jitter", d))
 	crime["start_time"] += _rng.randf_range(-jitter, jitter)
 	crime["start_time"] = clampf(crime["start_time"], 60.0, 550.0)
 
 	# If the player warned the victim in a previous loop, the perpetrator
 	# adapts by shifting their timing forward.
-	var adapt: float = Constants.get_dp("adapt_shift", d) as float
+	var adapt: float = float(Constants.get_dp("adapt_shift", d))
 	var victim_id: String = crime["cast"].get(Enums.CrimeRole.VICTIM, "")
 	if not victim_id.is_empty():
 		for intervention in GameState.intervention_history:

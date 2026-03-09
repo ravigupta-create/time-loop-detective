@@ -131,7 +131,7 @@ func _update_conspiracy_progress() -> void:
 		if conn["type"] == Enums.ConnectionType.CONSPIRACY or \
 		   conn["type"] == Enums.ConnectionType.FINANCIAL:
 			conspiracy_conns += 1
-	var mult: int = Constants.get_dp("conspiracy_mult", difficulty)
+	var mult: int = int(Constants.get_dp("conspiracy_mult", difficulty))
 	var target := mini(conspiracy_conns * mult, Constants.CONSPIRACY_MAX)
 	if target > conspiracy_progress:
 		advance_conspiracy(target - conspiracy_progress)

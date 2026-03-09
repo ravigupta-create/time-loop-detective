@@ -538,8 +538,8 @@ func _on_time_tick(current_time: float) -> void:
 	_progress_bar.value = TimeManager.get_progress()
 
 	# Check warning state
-	var loop_dur: float = Constants.get_dp("loop_duration", GameState.difficulty) as float
-	var countdown_start := loop_dur - (Constants.get_dp("countdown_offset", GameState.difficulty) as float)
+	var loop_dur: float = float(Constants.get_dp("loop_duration", GameState.difficulty))
+	var countdown_start: float = loop_dur - float(Constants.get_dp("countdown_offset", GameState.difficulty))
 	if current_time >= countdown_start and not _clock_warning:
 		_clock_warning = true
 		_clock_label.add_theme_color_override("font_color", COLOR_CLOCK_WARNING)
