@@ -16,6 +16,7 @@ const UI = (() => {
         document.getElementById('btn-wait').addEventListener('click', showWait);
         document.getElementById('btn-fast-forward').addEventListener('click', showFastForward);
         document.getElementById('btn-accuse').addEventListener('click', showAccusation);
+        document.getElementById('btn-mute').addEventListener('click', toggleSound);
 
         // Help
         document.getElementById('help-close').addEventListener('click', hideHelp);
@@ -139,7 +140,13 @@ const UI = (() => {
     function showWait() {
         if (Engine.state.screen !== 'playing') return;
         Engine.advanceTime(30);
-        Engine.notify('30 minutes pass...');
+        // Show atmospheric time-passing narration
+        const lines = GameData.narration.time_passing;
+        const msg = lines ? lines[Math.floor(Math.random() * lines.length)] : '30 minutes pass...';
+        Engine.notify(msg);
+        // Also update the room narration text
+        const narEl = document.getElementById('room-narration');
+        if (narEl) narEl.textContent = msg;
         World.refreshActions();
     }
 
@@ -470,6 +477,13 @@ const UI = (() => {
         requestAnimationFrame(() => descEl.classList.add('fade-in'));
     }
 
+    // ── Sound Toggle ──
+    function toggleSound() {
+        const enabled = Audio.toggle();
+        const btn = document.getElementById('btn-mute');
+        btn.textContent = enabled ? '🔊 Sound' : '🔇 Muted';
+    }
+
     // ── Help ──
     function showHelp() {
         document.getElementById('help-screen').classList.add('active');
@@ -491,6 +505,6 @@ const UI = (() => {
         showAccusation, hideAccusation,
         showLoopTransition, showEavesdrop,
         showExamineText, showLoopRecap, showHelp, hideHelp,
-        onEvidenceToggle, hideAllScreens,
+        onEvidenceToggle, hideAllScreens, toggleSound,
     };
 })();

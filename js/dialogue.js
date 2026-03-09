@@ -82,6 +82,22 @@ const Dialogue = (() => {
         return 'greeting';
     }
 
+    // ── Time-of-Day Greeting Helper ──
+    function getTimeGreeting(npcId) {
+        const greetings = GameData.npcGreetings?.[npcId];
+        if (!greetings) return null;
+        const rawTod = GameData.getTimeOfDay(Engine.state.time);
+        // Map detailed time periods to the 4 greeting keys
+        const todMap = {
+            early_morning: 'morning', morning: 'morning',
+            late_morning: 'morning', afternoon: 'afternoon',
+            late_afternoon: 'afternoon', evening: 'evening',
+            night: 'night', late_night: 'night'
+        };
+        const key = todMap[rawTod] || 'morning';
+        return greetings[key] || null;
+    }
+
     function showNode(nodeId, tree) {
         if (!tree) tree = GameData.dialogues[currentNPC];
         const node = tree[nodeId];
@@ -105,8 +121,15 @@ const Dialogue = (() => {
             node.flags.forEach(flag => Engine.setFlag(flag));
         }
 
+        // Use time-of-day greeting text if this is the greeting node
+        let displayText = node.text;
+        if (nodeId === 'greeting') {
+            const timeGreeting = getTimeGreeting(currentNPC);
+            if (timeGreeting) displayText = timeGreeting;
+        }
+
         // Typewriter effect for text
-        startTypewriter(node.text, () => {
+        startTypewriter(displayText, () => {
             showChoices(node.responses, tree);
         });
     }
@@ -256,6 +279,6 @@ const Dialogue = (() => {
     }
 
     return {
-        init, startConversation, endConversation,
+        init, startConversation, endConversation, getTimeGreeting,
     };
 })();

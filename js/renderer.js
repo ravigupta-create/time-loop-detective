@@ -10,6 +10,9 @@ const Renderer = (() => {
     let raindrops = [];
     let time = 0;
     let animFrame = null;
+    let lightningFlash = 0;
+    let lightningTimer = 0;
+    let fogParticles = [];
 
     function init() {
         canvas = document.getElementById('game-canvas');
@@ -17,6 +20,7 @@ const Renderer = (() => {
         resize();
         window.addEventListener('resize', resize);
         generateRain();
+        initFogParticles();
     }
 
     function resize() {
@@ -74,14 +78,11 @@ const Renderer = (() => {
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, width, height);
 
-        // Lightning flash
-        if (Math.random() < 0.001) {
-            ctx.fillStyle = 'rgba(200, 200, 255, 0.1)';
-            ctx.fillRect(0, 0, width, height);
-        }
-
         // Rain
         renderRain(0.5);
+
+        // Lightning
+        updateLightning();
     }
 
     // ── Room Rendering ──
@@ -147,10 +148,18 @@ const Renderer = (() => {
         // NPC indicators at bottom of scene
         renderNPCIndicators();
 
+        // Fog for garden, cellar, tower
+        if (loc.ambience === 'garden' || loc.ambience === 'cellar' || loc.ambience === 'tower') {
+            renderFog();
+        }
+
         // Rain if outdoor or window
         if (loc.ambience === 'garden' || loc.ambience === 'rain') {
             renderRain(0.3);
         }
+
+        // Lightning flashes
+        updateLightning();
 
         // Minimap in corner
         renderMinimapOverlay();
@@ -902,6 +911,59 @@ const Renderer = (() => {
         for (let y = 0; y < height; y += 3) {
             ctx.fillRect(0, y, width, 1);
         }
+    }
+
+    // ── Lightning ──
+    function updateLightning() {
+        lightningTimer -= 0.016;
+        if (lightningTimer <= 0) {
+            // Random chance of lightning, more frequent at night
+            const gameTime = Engine.state.time;
+            const nightFactor = gameTime > 1200 ? 0.003 : 0.001;
+            if (Math.random() < nightFactor) {
+                lightningFlash = 1.0;
+                lightningTimer = 0.1 + Math.random() * 0.2; // brief flash
+                // Sometimes double flash
+                if (Math.random() < 0.3) {
+                    setTimeout(() => { lightningFlash = 0.7; }, 150);
+                }
+            }
+        }
+        if (lightningFlash > 0) {
+            ctx.fillStyle = `rgba(200, 210, 255, ${lightningFlash * 0.15})`;
+            ctx.fillRect(0, 0, width, height);
+            lightningFlash *= 0.85; // decay
+            if (lightningFlash < 0.01) lightningFlash = 0;
+        }
+    }
+
+    // ── Fog/Mist for Garden and Tower ──
+    function initFogParticles() {
+        fogParticles = [];
+        for (let i = 0; i < 20; i++) {
+            fogParticles.push({
+                x: Math.random() * width * 1.5 - width * 0.25,
+                y: height * 0.2 + Math.random() * height * 0.5,
+                w: 100 + Math.random() * 200,
+                h: 20 + Math.random() * 40,
+                speed: 0.2 + Math.random() * 0.4,
+                opacity: 0.02 + Math.random() * 0.04,
+            });
+        }
+    }
+
+    function renderFog() {
+        fogParticles.forEach(f => {
+            f.x += f.speed;
+            if (f.x > width + f.w) {
+                f.x = -f.w;
+                f.y = height * 0.2 + Math.random() * height * 0.5;
+            }
+            ctx.fillStyle = `rgba(180, 190, 200, ${f.opacity})`;
+            ctx.beginPath();
+            ctx.ellipse(f.x, f.y, f.w / 2, f.h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        });
     }
 
     // ── Minimap ──

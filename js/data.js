@@ -10,6 +10,13 @@ const locations = {
     your_room: {
         name: 'Your Room',
         description: 'A modest guest room with heavy curtains and a single lamp casting amber light across floral wallpaper. Rain streaks the window. Your coat hangs by the door, still damp from last night\'s arrival.',
+        descriptions: {
+            early_morning: 'The room is swallowed in pre-dawn grey. Rain hammers the window like a warning. Your coat drips steadily onto the floor — you don\'t remember hanging it there.',
+            morning: 'Weak morning light seeps through the curtains, painting the floral wallpaper in washed-out gold. The storm has settled into a steady murmur. Your reflection in the mirror looks older than yesterday.',
+            afternoon: 'Afternoon light barely reaches this side of the manor. The lamp casts its amber glow across rumpled sheets and scattered notes. The room smells of damp wool and sleepless nights.',
+            evening: 'The single lamp fights a losing war against the encroaching dark. Shadows pool in the corners like spilled ink. Outside, the storm picks up again — as if the house is breathing deeper.',
+            night: 'Your room feels smaller at night, the walls pressing in. The lamp flickers once. Rain drives against the glass with renewed fury, and somewhere deep in the manor, a clock chimes the hour.',
+        },
         color: { bg: '#1a1520', wall: '#2a2030', floor: '#1a1510', accent: '#d4a020' },
         objects: [
             { id: 'mirror', name: 'Mirror', icon: '🪞',
@@ -30,6 +37,13 @@ const locations = {
     grand_hallway: {
         name: 'Grand Hallway',
         description: 'The central artery of Ravenholm Manor. A grand staircase sweeps upward beneath a dusty chandelier. Portraits of Ashworth ancestors line the walls, their painted eyes following you. The grandfather clock ticks with mechanical precision.',
+        descriptions: {
+            early_morning: 'The hallway is dim and cathedral-silent. The chandelier hangs dark overhead, and the Ashworth portraits stare down from their frames like a jury assembled before dawn.',
+            morning: 'Morning light angles through the high windows, catching dust motes that drift like tiny ghosts. The grandfather clock\'s ticking echoes off marble floors, steady as a heartbeat.',
+            afternoon: 'Afternoon sun throws long rectangles of gold across the hallway, but the portraits remain in shadow. The house feels awake now, alert — as if every door is an ear.',
+            evening: 'The chandelier blazes to life as evening settles in, casting fractured light across the ancestral portraits. The hallway feels like a stage set, dressed for the performance to come.',
+            night: 'The hallway feels endless at night, stretching into pools of darkness between each lamp. The grandfather clock\'s pendulum swings like a metronome counting down to something terrible.',
+        },
         color: { bg: '#0d0d1a', wall: '#1a1a2e', floor: '#1a1510', accent: '#8b6914' },
         objects: [
             { id: 'grandfather_clock', name: 'Grandfather Clock', icon: '🕰️',
@@ -57,6 +71,13 @@ const locations = {
     dining_room: {
         name: 'Dining Room',
         description: 'A long mahogany table set for twelve, though tonight\'s gala guests number far fewer. Crystal glassware catches the candlelight. The room smells of furniture polish and old money.',
+        descriptions: {
+            early_morning: 'The dining room sits empty and expectant in the grey dawn, place settings gleaming dully. The candles are unlit, the chairs pushed in with military precision. A room waiting to perform.',
+            morning: 'Breakfast service has begun. Steam rises from silver chafing dishes. The crystal catches the thin morning light, and the mahogany table glows like a dark mirror.',
+            afternoon: 'The lunch things have been cleared but the smell of roast lingers. A single wine glass sits forgotten at the far end of the table, a ruby ring of sediment at its base.',
+            evening: 'Candles burn low in their holders as the evening deepens. The table has been reset for the gala dinner — more silver, more crystal, more knives. The room smells of furniture polish and anticipation.',
+            night: 'The dining room is all flickering candlelight and long shadows now. The crystal throws tiny rainbows across the walls. Empty chairs surround the table like mourners at a wake.',
+        },
         color: { bg: '#1a1015', wall: '#2a1a20', floor: '#1a1510', accent: '#cc3333' },
         objects: [
             { id: 'dining_table', name: 'Dining Table', icon: '🍽️',
@@ -77,6 +98,13 @@ const locations = {
     kitchen: {
         name: 'Kitchen',
         description: 'A vast working kitchen, all copper pots and stone surfaces. Mrs. Blackwood rules this domain with quiet efficiency. Steam rises from pots on the massive range. The servants\' bell board hangs by the door, each bell labeled with a room.',
+        descriptions: {
+            early_morning: 'The kitchen is already alive before dawn — the range stoked, the kettle whistling. Copper pots catch the gas-light like small suns. Mrs. Blackwood\'s domain never truly sleeps.',
+            morning: 'Breakfast chaos fills the kitchen with the clatter of dishes and the sharp scent of toast and strong coffee. The bell board jangles intermittently. The staff move in practiced silence.',
+            afternoon: 'The afternoon kitchen hums with purpose. Gala preparations are in full swing — sauces simmer, pastry chills, and the air is thick with the smell of roasting meat and rosemary.',
+            evening: 'The kitchen is a furnace of activity as evening falls. Every surface is covered in gala preparations. Steam clouds the windows. The bell board rings with increasing urgency.',
+            night: 'The kitchen runs at full capacity for the gala service, a machine of silver trays and shouted orders. But in the far corners, where the lamplight doesn\'t reach, the shadows hold their secrets.',
+        },
         color: { bg: '#1a1810', wall: '#2a2520', floor: '#2a2218', accent: '#d4a020' },
         objects: [
             { id: 'bell_board', name: 'Bell Board', icon: '🔔',
@@ -99,6 +127,13 @@ const locations = {
     library: {
         name: 'The Library',
         description: 'Floor-to-ceiling bookshelves frame a room that smells of leather and dust. A reading desk sits near the window. The fireplace crackles softly. After midnight, this becomes a crime scene. The chalked outline of a body would fit perfectly between the desk and the hearth.',
+        descriptions: {
+            early_morning: 'The library is hushed in the pre-dawn dark, the fireplace cold and grey with last night\'s ashes. Books stand like sentinels in the gloom. The crime scene that hasn\'t happened yet waits patiently.',
+            morning: 'Weak light filters through the rain-streaked window, barely reaching the reading desk. The fireplace has been relit, its crackle the only sound. The books seem to lean in, listening.',
+            afternoon: 'The library is warm in the afternoon, the fire well-fed and the leather chairs inviting. Dust motes swirl in the thin light. A deceptive calm — this room will be a murder scene before dawn.',
+            evening: 'Evening turns the library into a theatre of shadow and firelight. The bookshelves become dark walls, the reading desk an island of amber light. The brandy tray catches the flame.',
+            night: 'The library at night is intimate and dangerous. The fire throws dancing shadows across the spines of a thousand books. Somewhere between the desk and the hearth, death is keeping an appointment.',
+        },
         color: { bg: '#10100a', wall: '#1a1a10', floor: '#2a1a0a', accent: '#8b4513' },
         objects: [
             { id: 'reading_desk', name: 'Reading Desk', icon: '📖',
@@ -124,6 +159,13 @@ const locations = {
     study: {
         name: 'The Study',
         description: 'Lord Ashworth\'s private domain. A heavy oak desk dominates the room, covered in papers and ledgers. A wall safe sits behind a painting. The room reeks of cigars and consequence.',
+        descriptions: {
+            early_morning: 'The study is dark and heavy with the ghost of last night\'s cigars. Papers lie scattered across the desk like evidence at a crime scene. The safe behind the painting watches from the wall.',
+            morning: 'Morning light cuts a sharp line across the desk, illuminating the paperwork Lord Ashworth has already begun. The room smells of fresh coffee over stale tobacco. Power gathers here like dust.',
+            afternoon: 'The afternoon study is warm with trapped cigar smoke and the weight of decisions. Ledgers lie open, numbers telling their own grim story. The telephone sits like a loaded weapon.',
+            evening: 'The desk lamp casts a tight circle of light as evening presses against the windows. The study feels smaller now, more private — a confessional for a man with too many sins to count.',
+            night: 'The study is abandoned at night, its occupant elsewhere. But the room holds the impression of Lord Ashworth like a coffin holds its shape. His secrets linger in every drawer.',
+        },
         color: { bg: '#1a1510', wall: '#2a2018', floor: '#1a150a', accent: '#d4a020' },
         objects: [
             { id: 'desk_papers', name: 'Desk Papers', icon: '📄',
@@ -148,6 +190,13 @@ const locations = {
     drawing_room: {
         name: 'Drawing Room',
         description: 'An elegant sitting room with a grand piano in the corner. Soft light from table lamps creates pools of warmth against the cold darkness outside. The guests gather here during quieter hours.',
+        descriptions: {
+            early_morning: 'The drawing room is still and silver in the early light. The grand piano\'s lid is closed, its black surface reflecting the rain-streaked windows like a dark lake.',
+            morning: 'Morning tea is laid out on the side table. The drawing room wears its elegance lightly now — sunlight softens the velvet, and the piano gleams. A civilized mask for an uncivilized house.',
+            afternoon: 'The drawing room drowses in the afternoon warmth, table lamps burning low. Conversation murmurs here like background music. The piano sits silent, waiting for someone brave enough to play.',
+            evening: 'The lamps are turned up as evening settles in, and the drawing room glows with false comfort. The piano catches the light like polished bone. Guests drift through, rehearsing their smiles for the gala.',
+            night: 'At night the drawing room empties, the gala pulling everyone to the ballroom. The piano stands alone in the half-dark, its keys untouched. The silence here feels deliberate, like someone holding their breath.',
+        },
         color: { bg: '#15101a', wall: '#201828', floor: '#1a1510', accent: '#8855bb' },
         objects: [
             { id: 'piano', name: 'Grand Piano', icon: '🎹',
@@ -167,6 +216,13 @@ const locations = {
     ballroom: {
         name: 'Ballroom',
         description: 'The grandest room in the manor. Crystal chandeliers hang from a vaulted ceiling painted with scenes from mythology. Before the gala, it\'s empty and echoing. After 7 PM, it fills with music, champagne, and carefully maintained facades.',
+        descriptions: {
+            early_morning: 'The ballroom is a cavern of silence before dawn. The chandeliers hang dark and heavy, the vaulted ceiling lost in shadow. Your footsteps echo on the parquet like a ghost walking.',
+            morning: 'Empty in the morning light, the ballroom reveals its true scale. The mythological ceiling paintings seem garish without the softening of candlelight. Staff move through, setting tables and polishing silver.',
+            afternoon: 'The ballroom is being transformed for the gala. Staff arrange chairs, polish crystal, test the lighting. The chandeliers blaze experimentally, then dim. A dress rehearsal for the final act.',
+            evening: 'The ballroom glitters as the chandeliers are lit for real. Champagne is chilling, the string quartet is tuning up, and the room holds its breath. The stage is set for the evening\'s performance.',
+            night: 'The gala is in full swing. Crystal chandeliers blaze. Music swells. Champagne flows. Every face wears a smile, and behind every smile hides a motive. The ballroom has never looked more beautiful or more dangerous.',
+        },
         color: { bg: '#10101a', wall: '#1a1a30', floor: '#2a2020', accent: '#d4a020' },
         objects: [
             { id: 'champagne_table', name: 'Champagne Table', icon: '🍾',
@@ -186,6 +242,13 @@ const locations = {
     garden: {
         name: 'The Garden',
         description: 'The manor grounds stretch into mist and rain. Gravel paths wind between manicured hedges turned wild by winter. A greenhouse glows faintly in the distance. The gazebo offers shelter but little warmth.',
+        descriptions: {
+            early_morning: 'The garden is a world of mist and grey before sunrise. Hedges loom like dark walls, and the gravel paths vanish into fog. The greenhouse is a faint smudge of light in the distance, spectral and wrong.',
+            morning: 'Morning rain falls steady on the garden, turning the gravel paths to dark ribbons. The hedges drip. The greenhouse glows a sickly green through the mist. Even in daylight, the grounds feel watched.',
+            afternoon: 'The rain eases to a drizzle by afternoon, and the garden exhales. Wet stone paths gleam. The greenhouse stands clearer now, its glass walls fogged from within. The air smells of earth and decay.',
+            evening: 'Evening swallows the garden quickly. The paths dissolve into darkness, the hedges become impenetrable walls, and the greenhouse light burns like an ember in the black. The gazebo offers no shelter from what\'s coming.',
+            night: 'The garden at night is a void. Rain hammers unseen gravel, wind tears at invisible hedges, and the greenhouse is a lone beacon of poisonous green light. No sane person walks these grounds after dark.',
+        },
         color: { bg: '#0a100a', wall: '#1a2a1a', floor: '#101a10', accent: '#44aa66' },
         objects: [
             { id: 'greenhouse', name: 'Greenhouse', icon: '🌱',
@@ -206,6 +269,13 @@ const locations = {
     master_suite: {
         name: 'Master Suite',
         description: 'Lord and Lady Ashworth\'s private chambers. Opulent but cold — a king-size bed that looks like it\'s been slept in from only one side. Lady Evelyn\'s vanity gleams with perfume bottles and jewellery.',
+        descriptions: {
+            early_morning: 'The master suite is heavy with sleep and silence. Curtains drawn tight, the bed disturbed on only one side. Perfume bottles on the vanity catch a sliver of light from beneath the door like guilty eyes.',
+            morning: 'Morning light is ruthless in the master suite, exposing the cold distance between the two sides of the bed. Lady Evelyn\'s vanity is immaculate. Lord Ashworth\'s side is bare. A marriage told in furniture.',
+            afternoon: 'The suite is quiet in the afternoon, the bed remade, the surfaces polished. But the room can\'t hide what it is — a gilded prison shared by two people who stopped loving each other long ago.',
+            evening: 'Evening preparations transform the suite. Gala attire is laid out, jewellery selected, masks prepared. The room buzzes with the energy of two people dressing for a performance they\'ve rehearsed for decades.',
+            night: 'The master suite is empty during the gala, its occupants elsewhere playing their roles. The perfume bottles stand like sentries on the vanity. The bed waits. The room knows it will witness no reconciliation tonight.',
+        },
         color: { bg: '#1a101a', wall: '#2a1a2a', floor: '#201520', accent: '#cc3333' },
         objects: [
             { id: 'vanity', name: 'Vanity Table', icon: '💍',
@@ -227,6 +297,13 @@ const locations = {
     wine_cellar: {
         name: 'Wine Cellar',
         description: 'Cool, dark, and labyrinthine. Stone archways frame rows of dusty bottles. The air is damp and tastes of earth. Deep in the cellar, the walls change from brick to rough-hewn stone — older, much older than the manor itself.',
+        descriptions: {
+            early_morning: 'The cellar doesn\'t know what time it is. It\'s always midnight down here — always cold, always dark. Stone archways frame rows of dusty bottles like a crypt for the drinkable dead.',
+            morning: 'Even in the morning, the cellar is a world apart. Damp stone, dead air, the drip of condensation. The ancient walls at the back seem to breathe, older than anything above ground.',
+            afternoon: 'The cellar in the afternoon is no different from the cellar at dawn. Time has no jurisdiction here. Only the dust moves, disturbed by footsteps that have no business being this far underground.',
+            evening: 'As evening falls above, the cellar grows colder — or perhaps it only feels that way. The stone walls sweat. The deeper passages beckon with the promise of older, darker secrets.',
+            night: 'Night in the cellar is absolute. The single bulb barely reaches the first row of bottles. Beyond lies a maze of stone and shadow where someone could hide, or be hidden, and never be found.',
+        },
         color: { bg: '#0a0a0a', wall: '#1a1510', floor: '#0d0a08', accent: '#553322' },
         objects: [
             { id: 'wine_racks', name: 'Wine Racks', icon: '🍷',
@@ -248,6 +325,13 @@ const locations = {
     tower: {
         name: 'The Tower',
         description: 'A spiral staircase leads to a circular room at the top of the manor\'s only tower. An antique telescope points at the sky. But the room\'s centerpiece is impossible to ignore: an ancient clock mechanism, far older than the manor, humming with an energy that makes your teeth ache.',
+        descriptions: {
+            early_morning: 'The tower room is cold and thrumming before dawn. The ancient clock mechanism pulses with a faint blue light, casting alien shadows on the curved walls. The telescope points at a sky that hasn\'t changed in loops.',
+            morning: 'Morning light floods the circular room through narrow windows, but it can\'t warm the air near the clock. The mechanism hums louder in daylight, as if agitated by the sun. Your teeth ache just standing here.',
+            afternoon: 'The tower bakes in the afternoon, the curved walls trapping heat — everywhere except near the clock. A pocket of cold air surrounds the mechanism like a grave. The telescope stands useless against the overcast sky.',
+            evening: 'As evening light dims, the clock mechanism seems to glow brighter, its ancient gears turning with impossible precision. The hum rises in pitch. The tower feels less like a room and more like the inside of something alive.',
+            night: 'The tower at night is the heart of the loop. The clock mechanism blazes with cold blue light, its hum vibrating through stone and bone. The spiral staircase below is a throat, and you are standing in the skull of something ancient.',
+        },
         color: { bg: '#0a0a15', wall: '#15152a', floor: '#1a1520', accent: '#4488cc' },
         objects: [
             { id: 'ancient_clock', name: 'Ancient Clock', icon: '⏰',
@@ -1573,40 +1657,104 @@ const endings = {
         title: 'True Justice',
         requires: { suspect: 'lady_evelyn', accomplice: 'rex_dalton',
             evidence: ['poison_vial', 'love_letters', 'secret_passage', 'brandy_glass', 'blackwood_testimony'] },
-        text: 'You present the evidence before the gathered guests. Lady Evelyn\'s mask crumbles. Rex tries to run — but in a manor this old, there\'s nowhere to go.\n\nThe truth pours out: thirty years of a loveless marriage, a desperate affair, a plan born of poison and opportunity. Rex used the secret passage. Evelyn drugged the brandy. Together, they killed the man who kept them both in chains.\n\nAs the clock strikes midnight, it doesn\'t reset. The ancient mechanism in the tower falls silent. The loop breaks.\n\nJustice, at last.',
+        text: 'You present the evidence before the gathered guests, and the ballroom falls silent. Every eye turns to Lady Evelyn. For one long moment, her mask holds — the practiced smile, the dignified composure. Then it crumbles, piece by piece, like a portrait dissolving in rain.\n\nRex makes for the door, but Mr. Finch is already there, blocking the exit with the quiet authority of a man who has waited decades for this moment. There is nowhere to run in a house this old. The walls themselves are witnesses.\n\nThe truth pours out like blood from a wound. Thirty years of a loveless marriage. A desperate affair born in whispered garden meetings and hidden letters. A plan hatched in poison and executed with surgical patience — aconitine in the brandy, Rex through the secret passage to ensure the deed was done. They killed Lord Ashworth not out of madness, but out of a cold, calculated need to be free.\n\nAs you speak the last words of your accusation, the grandfather clock in the hallway strikes midnight. But this time, the world does not rewind. The ancient mechanism in the tower emits a single, clear tone — like a bell being struck for the last time — and falls silent. The gears stop. The humming fades. The loop shatters like glass.\n\nOutside, the rain begins to ease. December 22nd dawns for the first time in an eternity. Justice, at last, has broken the cycle.',
         rating: 'Perfect Ending',
     },
     partial_truth: {
         title: 'A Crack in the Case',
         requires: { suspect: 'lady_evelyn',
             minEvidence: 3 },
-        text: 'You accuse Lady Evelyn before the guests. She denies it — but your evidence is strong enough to plant doubt. Rex\'s role remains hidden.\n\nThe police will sort through the rest. The loop breaks, but the truth is incomplete.\n\nSome justice is better than none.',
+        text: 'You level your accusation at Lady Evelyn before the assembled guests, and the ballroom divides like a courtroom. She denies it, of course — her voice steady, her chin raised, every inch the lady of the manor. But your evidence is a blade, and it cuts through her composure in ways the guests cannot ignore.\n\nWhispers ripple through the crowd. James stares at his mother with dawning horror. Lily closes her eyes, as if she always knew. Rex Dalton stands very still in the corner, his face a careful blank — his role in the conspiracy still hidden, a shadow behind the shadow.\n\nThe police are called. The investigation will continue through the night and into the weeks that follow. You have cracked the case open, but the full truth — the accomplice, the secret passage, the depth of the betrayal — remains buried in the foundations of Ravenholm Manor.\n\nAs midnight strikes, the loop breaks. The ancient clock in the tower winds down with a weary sigh. You step outside into the cold December air. The rain has stopped, but the clouds remain. Some justice is better than none — but a detective never forgets the questions left unanswered.',
         rating: 'Good Ending',
     },
     wrong_accusation: {
         title: 'The Wrong Thread',
         requires: { suspectNot: 'lady_evelyn' },
-        text: 'You make your accusation with conviction — but you\'ve pulled the wrong thread. The true killers exchange a glance of relief.\n\nThe clock strikes twelve. The world rewinds.\n\nBack to 6:00 AM. Back to the rain. You were wrong — but now you know one more thing: who DIDN\'T do it.',
+        text: 'You make your accusation with conviction, laying out your evidence before the gathered guests. The room holds its breath. For a moment, you believe you have it — the motive, the means, the opportunity all aligned.\n\nBut the true killers know better. Across the ballroom, Lady Evelyn and Rex Dalton exchange the briefest of glances — not relief, exactly, but something colder. Satisfaction. They have watched you chase the wrong shadow through every room in this house, and your failure is their freedom.\n\nThe accused protests their innocence. The guests murmur. The evidence, examined in the harsh light of scrutiny, falls apart like wet paper. You were close — you could feel the shape of the truth — but you pulled the wrong thread, and the tapestry unraveled in your hands.\n\nThe grandfather clock strikes twelve. The world shudders, blurs, and rewinds. You wake with a gasp in your guest room. 6:00 AM. The rain. The same rain. But you are not the same detective who woke here last time. You know one more thing now: who didn\'t do it. And in a house full of liars, even that is progress.',
         rating: 'Try Again',
         continuesLoop: true,
     },
     prevention: {
         title: 'Midnight Never Comes',
         requires: { flags: ['evelyn_full_confession'], minLoop: 5 },
-        text: 'Armed with the full truth, you intervene before the murder can happen. You confront Lady Evelyn at 11 PM. Rex never reaches the Library. Lord Ashworth lives to see another morning.\n\nThe ancient clock in the tower chimes once — a clear, pure tone — and falls silent forever. The loop was waiting for this. Not justice after the fact, but prevention. Not punishment, but salvation.\n\nAs dawn breaks on December 22nd — a day that hasn\'t existed in a very long time — the rain finally stops.',
+        text: 'Armed with the full, terrible truth — every confession, every piece of evidence, every thread of conspiracy woven through this house of lies — you make your move before the killers can make theirs. At 11 PM, while the gala still glitters and the champagne still flows, you confront Lady Evelyn in the drawing room.\n\nShe sees it in your eyes: you know everything. The poison. The affair. The plan with Rex. The secret passage. The brandy that was meant to be Lord Ashworth\'s last drink. Her composure shatters, not with a scream, but with silence — the silence of a woman who realizes the game is over before the final move.\n\nRex Dalton never reaches the Library. Mr. Finch, quietly informed, locks the cellar passage. Dr. Cross is summoned to Lord Ashworth\'s side. And Lord Ashworth — stubborn, paranoid, brilliant Lord Ashworth — lives to see another morning for the first time in what feels like forever.\n\nThe ancient clock in the tower chimes once at midnight. Not the heavy, grinding toll of the loop resetting, but a single, pure note — clear as a church bell, clean as absolution. The mechanism exhales. The gears slow. The humming that has saturated Ravenholm Manor like a fever finally, mercifully, stops.\n\nAs dawn breaks on December 22nd — a day that hasn\'t existed in a very long time — the rain stops too. Light spills over the moor, touching the garden, the greenhouse, the stone walls of the manor. Lord Ashworth stands at his window, alive, watching the sunrise with the expression of a man who has been given a gift he doesn\'t yet understand. The loop was never about justice after the fact. It was about this: prevention. Not punishment, but salvation. Not solving the crime, but stopping it.',
         rating: 'Perfect Ending — True Resolution',
     },
     clock_secret: {
         title: 'The Clockmaker\'s Truth',
         requires: { evidence: ['ancient_clock', 'tower_journal'] },
-        text: 'You discovered the source of the loop: an ancient mechanism, older than the manor, older than memory. Lord Ashworth found it and activated it, seeking to cheat death.\n\nInstead, he trapped everyone in an endless night. The clock doesn\'t care about justice or murder. It simply repeats, waiting for someone to understand.\n\nYou touch the mechanism. The gears slow. The humming fades.\n\nThe loop breaks — but the mystery of who made the clock, and why, will haunt you forever.',
+        text: 'You discovered the source of the loop, and it is older than murder, older than the Ashworth family, older than the manor itself. In the tower room, bathed in cold blue light, the ancient clock mechanism hums with the voice of something that was never meant to be found.\n\nLord Ashworth\'s journal tells the story: he discovered the mechanism beneath the cellar years ago, buried in stone older than recorded history. He studied it obsessively, convinced he could harness its power. "If I can control time itself," he wrote, "death becomes optional." The irony is exquisite — a man trying to cheat death who instead created an endless loop of his own murder.\n\nYou stand before the mechanism now. Its gears turn with impossible precision, etched with symbols that predate any language you recognize. The humming fills your chest, your skull, your bones. This is not a clock. This is something else entirely — a device built by hands unknown, for purposes unknowable, and Lord Ashworth merely stumbled upon its smallest function.\n\nYou reach out and touch the central gear. The metal is ice-cold and vibrating. The gears slow. The humming drops in pitch, like a great beast exhaling its last breath. The blue light flickers, dims, and dies. Silence floods the tower room — real silence, for the first time since the loop began.\n\nThe loop breaks. The murder, unsolved, will play out one final time. But the mechanism is still, and whatever ancient intelligence designed it has moved on to longer, stranger games. You descend the spiral staircase into a house that will finally see tomorrow. The mystery of who made the clock, and why, will follow you for the rest of your life — a question without an answer, humming softly in the back of your mind like a gear that never quite stops turning.',
         rating: 'Secret Ending',
     },
     surrender: {
         title: 'Endless Night',
         requires: {},
-        text: 'The clock strikes twelve. Lord Ashworth dies. The world rewinds.\n\nYou\'ve seen it too many times. Heard the same conversations. Walked the same halls. The truth is there — you can feel it — but you can\'t reach it.\n\nSo you stop trying. You sit in your room, listening to the rain, waiting for midnight.\n\nThe loop continues. It always continues.\n\nSome mysteries are never solved.',
+        text: 'The clock strikes twelve. Lord Ashworth dies in the Library, a glass of poisoned brandy at his side. The world shudders, blurs, and rewinds. 6:00 AM. The guest room. The rain.\n\nYou\'ve lived this day more times than you can count. You know the rhythm of the house by heart — when Mrs. Blackwood starts the range, when James pours his first drink, when Lily walks the garden in the rain, when Rex makes his angry phone calls, when Lady Evelyn arranges flowers with hands that will later arrange a murder. You know all of it, and none of it is enough.\n\nSo you stop. You sit on the edge of your bed, hands on your knees, and listen to the rain. The storm doesn\'t care about your investigation. The clock doesn\'t care about justice. The loop will continue whether you fight or surrender, and somewhere in the space between exhaustion and despair, you choose to let go.\n\nThe day plays out around you like a film you\'ve seen too many times. The gala glitters. The champagne flows. The music plays. And at midnight, a man dies in a library, and the world resets, and a detective sits in a guest room staring at rain-streaked glass, and the loop continues. It always continues. The storm never breaks. The clock never stops. And some mysteries — the ones that live in old houses, in old families, in the spaces between the ticking of ancient gears — are never solved.',
         rating: 'Dark Ending',
+    },
+};
+
+// ── NPC TIME-OF-DAY GREETINGS ──
+const npcGreetings = {
+    lord_ashworth: {
+        morning: 'Lord Ashworth looks up from his morning coffee, his gray eyes sharp despite the early hour. "Ah, Detective Voss. Early riser, are you? Good. Join me — I find the morning is the only honest hour in this house."',
+        afternoon: 'Lord Ashworth regards you over steepled fingers. "Back again, Detective? I trust you\'re finding your stay... productive. The afternoon has a way of revealing what the morning hides."',
+        evening: 'Lord Ashworth adjusts his cufflinks with practiced precision. "The evening draws on, Detective. The gala will begin soon. I hope you\'ve had time to... observe." His tone carries the weight of a man who knows what\'s coming.',
+        night: '"It\'s rather late for social calls, isn\'t it, Detective?" Lord Ashworth\'s voice is lower now, rougher. The firelight catches the hollows beneath his eyes. "But then, the night brings out the truth in people. Ask your questions."',
+    },
+    lady_evelyn: {
+        morning: 'Lady Evelyn sips her tea with mechanical grace. "Good morning, Detective. I trust the guest room was adequate? We do pride ourselves on hospitality here." Her smile is porcelain and just as cold.',
+        afternoon: '"Detective Voss." Lady Evelyn acknowledges you without looking up from her flower arrangement. "I\'m rather busy with gala preparations. I hope this won\'t take long." Every petal she places feels like a calculated move.',
+        evening: 'Lady Evelyn stands in the doorway, resplendent in her gala preparation. "Ah, Detective. Don\'t you look handsome. The gala is nearly upon us — I do hope you\'ll enjoy yourself." Her eyes say something entirely different from her mouth.',
+        night: '"Still prowling the halls, Detective?" Lady Evelyn\'s composure is flawless even at this hour, but her fingers grip her champagne glass a fraction too tight. "Some things are best left until morning."',
+    },
+    james_ashworth: {
+        morning: 'James squints at you through bloodshot eyes, nursing what appears to be his third coffee. "God, Detective, it\'s too early for interrogations. Come back when the room stops spinning."',
+        afternoon: 'James waves you over with a tumbler in hand. "Detective! Thank God, someone worth talking to. This house is like a mausoleum in the afternoons. Drink?" He\'s already pouring before you can answer.',
+        evening: '"Evening, Detective." James straightens his tie with unsteady hands. "The gala approaches. Father\'s big night. Everyone\'s pretending to be excited." He drains his glass. "I\'m pretending hardest of all."',
+        night: 'James is deep in his cups, his charm fraying at the edges. "Detective Voss! My favorite person in this... this gilded prison. Sit, sit. The night is young and I have opinions about everyone in this family."',
+    },
+    lily_ashworth: {
+        morning: 'Lily looks up from her journal, rain-damp hair framing her fierce expression. "You\'re up early, Detective. Good. The morning is when people forget to wear their masks. Pay attention today."',
+        afternoon: '"Detective." Lily sets down her book with a measured sigh. "Another afternoon trapped in the amber of this house. Have you noticed how time moves differently here? Or is that just me?"',
+        evening: 'Lily stands by the window, watching the last light die. "Evening, Detective. The gala is almost here. Everyone is getting dressed up to play their parts." She turns to you. "I refuse to play mine."',
+        night: '"Still investigating, Detective? Good." Lily\'s eyes burn with quiet intensity in the dim light. "The night is when this family shows its true face. Don\'t trust the smiles. Don\'t trust the tears."',
+    },
+    dr_cross: {
+        morning: 'Dr. Cross adjusts his spectacles and offers a warm, if weary, handshake. "Good morning, Detective. I find the mornings here... bracing. The coffee is excellent, at least. Victor always did have good taste in coffee."',
+        afternoon: '"Ah, Detective Voss." Dr. Cross looks up from his medical journal, a pen still in hand. "The afternoon drags on, doesn\'t it? I find myself checking Lord Ashworth\'s vitals more than I probably should. Old habits."',
+        evening: 'Dr. Cross stands near the fireplace, his medical bag at his feet as always. "Evening, Detective. I must say, I have a... premonition about tonight. Call it a doctor\'s instinct." His hands tremble slightly.',
+        night: '"Detective." Dr. Cross\'s voice is hushed, his kind eyes shadowed with worry. "I don\'t like the feel of tonight. Victor looked unwell at dinner. I wanted to examine him but he waved me off. Stubborn man."',
+    },
+    rex_dalton: {
+        morning: 'Rex Dalton barely glances up from his phone, jaw tight. "Detective. Bit early for whatever this is, isn\'t it? I haven\'t even finished my first cigarette." He lights one to prove his point.',
+        afternoon: '"Afternoon, Detective." Rex pours himself a generous whisky, his third of the day. "Still sniffing around, are you? I admire the work ethic. I just wish it weren\'t directed at me." His smile doesn\'t reach his calculating eyes.',
+        evening: 'Rex straightens his dinner jacket, checking his reflection. "Ah, the Detective. Ready for the gala? Big night. Big announcements." He tugs at his collar. "Should be... memorable." There\'s something feral behind his casual tone.',
+        night: '"Christ, Detective, what do you want now?" Rex\'s civility has worn thin with the hour. His eyes are glassy from drink, but his mind is clearly elsewhere — calculating, planning. "The night\'s getting on. Don\'t you have somewhere to be?"',
+    },
+    isabelle_moreau: {
+        morning: 'Isabelle smiles warmly, though her dark eyes miss nothing. "Bonjour, Detective. I am still learning the rhythms of this house. The mornings are... tense, non? Everyone performing even over their breakfast."',
+        afternoon: '"Detective Voss." Isabelle tilts her head, studying you. "The afternoons here are strange. Everyone retreats to their corners, like boxers between rounds. What have you discovered today?" Her curiosity feels professional.',
+        evening: '"Bonsoir, Detective." Isabelle adjusts the bracelet on her wrist — a nervous habit or a calculated gesture. "The gala approaches. Everyone is putting on their best face. I wonder which faces will slip tonight."',
+        night: 'Isabelle\'s smile is strained at this hour. "Detective. Still working? So am I." She catches herself. "I mean — still enjoying the party. It is quite the event." The mask nearly slipped. She knows it.',
+    },
+    father_thomas: {
+        morning: 'Father Thomas closes his prayer book gently. "Good morning, Detective. I trust you slept? I did not. The Lord grants me watchfulness when others need it most." His eyes carry the weight of unspoken confessions.',
+        afternoon: '"Detective Voss." Father Thomas folds his hands, a gesture somewhere between prayer and resignation. "The afternoon light reveals much, doesn\'t it? I wish I could say the same for the souls in this house."',
+        evening: 'Father Thomas stands near the window, his black vestments blending with the coming dark. "Evening, Detective. The hour of reckoning approaches. I have prayed for this family, but I fear God has other plans for tonight."',
+        night: '"Detective." Father Thomas\'s voice is barely a whisper. "The night presses in. I carry knowledge that burns like a coal in my chest. The seal of confession binds me, but..." He trails off, anguished. "Ask me the right questions."',
+    },
+    mrs_blackwood: {
+        morning: 'Mrs. Blackwood wipes her hands on her apron with brisk efficiency. "Morning, Detective. Breakfast is on the sideboard. If you need anything, ring the bell. Otherwise, I have a house to run."',
+        afternoon: '"Detective." Mrs. Blackwood pauses mid-task, her steel-gray eyes assessing. "Afternoon already. The gala preparations won\'t manage themselves. If you have questions, make them quick — the lamb won\'t braise itself."',
+        evening: 'Mrs. Blackwood is a whirlwind of last-minute preparations as evening falls. "Detective Voss. The gala begins in hours. I haven\'t time for pleasantries." She pauses. "But if it\'s about the family... I might make time."',
+        night: '"Still about, Detective?" Mrs. Blackwood\'s composure cracks for just a moment, revealing exhaustion and something else — fear. "The gala\'s in full swing. Everyone\'s accounted for. Mostly." That last word hangs in the air.',
+    },
+    mr_finch: {
+        morning: 'Mr. Finch inclines his head precisely fifteen degrees. "Good morning, Detective Voss. Lord Ashworth is already at his desk. The household is in motion. Is there something I can assist you with?"',
+        afternoon: '"Detective." Mr. Finch materializes beside you with the silence of a man who has spent decades learning to move without being noticed. "The afternoon proceeds as expected. Shall I arrange tea, or is this a professional call?"',
+        evening: 'Mr. Finch stands at rigid attention, every button polished, every crease sharp. "Good evening, Detective. The gala preparations are on schedule. Lord Ashworth has asked that all guests assemble in the ballroom by eight." His loyalty is a wall.',
+        night: '"Detective Voss." Mr. Finch\'s voice is lower than usual, his composure strained by something beneath the surface. "The hour is late. I remain at my station, as always. But tonight..." He straightens. "Tonight feels different."',
     },
 };
 
@@ -1616,11 +1764,21 @@ const narration = {
         'Something is wrong. You can feel it in the air, in the static charge of the storm.',
         'This house has secrets older than its foundations.',
         'Watch the people. Listen to what they don\'t say.',
+        'The manor breathes around you — old walls, old money, old sins. You\'re not a guest here. You\'re a witness.',
+        'Every room in this house is a stage. Every conversation is a performance. Your job is to see behind the curtain.',
+        'Trust your instincts, Detective. They brought you here for a reason — and it wasn\'t the gala.',
+        'The storm outside mirrors the one inside these walls. Someone in this house is desperate, and desperate people do desperate things.',
+        'You\'ve worked cases before. Murders, frauds, disappearances. But this one feels different. This one feels like it\'s already happened.',
     ],
     laterLoops: [
         'You\'ve been here before. Done this before. But this time, you know more.',
         'The rain sounds the same. The clock ticks the same. But you are different.',
         'Every loop, the picture gets clearer. The killer doesn\'t know you\'re coming.',
+        'Deja vu is for amateurs. You remember everything — every lie, every glance, every door that closed too quickly. This time, you\'re ready.',
+        'The loop is a cage, but it\'s also a weapon. Every repetition is another chance to catch what you missed.',
+        'They repeat the same mistakes, the same conversations, the same sins. You don\'t. That\'s your advantage.',
+        'The faces are the same. The smiles are the same. But now you see the machinery behind them — the gears of greed, jealousy, and fear.',
+        'Another loop. Another chance. The killer is consistent, predictable. And predictable people get caught.',
     ],
     evidenceFound: [
         'Another piece of the puzzle falls into place.',
@@ -1631,6 +1789,23 @@ const narration = {
         'The clock is ticking. Midnight approaches.',
         'Hours left. The gala is in full swing. The killer is making their move.',
         'Time is running out. Do you have enough?',
+        'The witching hour draws near. Somewhere in this manor, a killer is following their script. Do you know enough to rewrite the ending?',
+        'The grandfather clock counts down like a fuse. Each tick is a second closer to murder. Each tick is a second closer to the truth.',
+        'Midnight waits for no one — not even a detective trapped in time. The pieces are on the board. It\'s your move.',
+    ],
+    time_passing: [
+        'Minutes bleed away like ink in rain. The storm outside hasn\'t changed, but the house has — the mood shifting, the shadows lengthening.',
+        'You wait. The clock ticks. Somewhere in the manor, people are moving, talking, scheming. The world turns without your input.',
+        'Time passes. The rain continues its assault on the windows. You feel the minutes like sand running through your fingers — each grain irreplaceable.',
+        'Half an hour vanishes into the rhythm of the storm. When you check the clock, the hands have moved, and so has everyone in the house.',
+        'You let the time flow past you, listening to the old house settle and creak. When the world sharpens again, the light has changed. So have the stakes.',
+    ],
+    returning: [
+        'You\'ve been here before — in more ways than one. The room hasn\'t changed, but your understanding of it has.',
+        'Familiar walls. Familiar shadows. But now you see the details you missed the first time through.',
+        'Back again. The room greets you like an old accomplice — silent, knowing, full of secrets you haven\'t extracted yet.',
+        'This place holds something you need. You can feel it, like a word on the tip of your tongue — just out of reach, but close.',
+        'You return with fresh eyes and old suspicions. Every object, every shadow, every dust mote might be the key to everything.',
     ],
 };
 
@@ -1684,7 +1859,7 @@ function validateAccusation(suspect, accomplice, evidencePresented) {
 // Public API
 return {
     locations, mapLayout, npcs, evidence, connections,
-    eavesdrops, dialogues, introSequence, loopMessages,
+    eavesdrops, dialogues, npcGreetings, introSequence, loopMessages,
     endings, narration, formatTime, getTimeOfDay,
     getTimePeriodName, validateAccusation,
 };

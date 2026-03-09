@@ -22,9 +22,14 @@ const World = (() => {
         showScreen('hud');
         showScreen('room-view');
 
-        // Description and narration
+        // Description and narration — use time-of-day variant if available
+        const rawTod = GameData.getTimeOfDay(Engine.state.time);
+        // Map detailed time periods to description keys (fallback for late_morning, late_afternoon, late_night)
+        const todMap = { late_morning: 'morning', late_afternoon: 'afternoon', late_night: 'night' };
+        const tod = todMap[rawTod] || rawTod;
+        const desc = loc.descriptions?.[tod] || loc.description;
         const descEl = document.getElementById('room-description');
-        descEl.textContent = loc.description;
+        descEl.textContent = desc;
         descEl.classList.add('fade-in');
 
         // First visit or regular narration
@@ -32,6 +37,10 @@ const World = (() => {
         if (!firstVisit[locationId] && loc.narratorFirst) {
             narEl.textContent = loc.narratorFirst;
             firstVisit[locationId] = true;
+        } else if (firstVisit[locationId] && GameData.narration.returning && Math.random() < 0.35) {
+            // Occasionally show "returning" narration when revisiting a location
+            const retLines = GameData.narration.returning;
+            narEl.textContent = retLines[Math.floor(Math.random() * retLines.length)];
         } else if (loc.narrator) {
             narEl.textContent = loc.narrator;
         } else {
@@ -46,6 +55,13 @@ const World = (() => {
 
         // Start ambience
         Audio.startAmbience(loc.ambience || 'rain');
+
+        // Start background music — quiet theme for tower/wine_cellar, default investigation
+        if (locationId === 'tower' || locationId === 'wine_cellar') {
+            Audio.startMusic('quiet');
+        } else {
+            Audio.startMusic('investigation');
+        }
     }
 
     function buildRoomActions(locationId) {

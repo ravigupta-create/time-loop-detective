@@ -69,6 +69,7 @@ const Engine = (() => {
             else if (key === 'w') UI.showWait();
             else if (key === 'f') UI.showFastForward();
             else if (key === 'a') UI.showAccusation();
+            else if (key === 'm') UI.toggleSound();
         }
         if (key === 'escape') {
             if (state.screen === 'notebook') UI.toggleNotebook();
