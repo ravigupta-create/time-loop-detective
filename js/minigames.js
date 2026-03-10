@@ -928,11 +928,110 @@ const MiniGames = (() => {
         return true;
     }
 
+    function getActiveType() {
+        return active;
+    }
+
+    // Step-by-step bot interaction — returns true when solved
+    function botStep() {
+        if (!active) return false;
+
+        if (active === 'safe') {
+            // Enter digits one at a time (spin dial to correct number)
+            const s = mgState;
+            if (s.solved) return true;
+            const target = s.code[s.currentDigit];
+            // Snap dial to correct position with a small animation
+            const targetAngle = target * 36;
+            s.dialAngle = targetAngle + (Math.random() - 0.5) * 8; // slight imprecision
+            s.spinning = true;
+            s.dialSpeed = (Math.random() - 0.5) * 15; // gentle spin to settle
+            Audio.playSound('click');
+            return false;
+        }
+
+        if (active === 'lockpick') {
+            const s = mgState;
+            if (s.solved) return true;
+            if (s.currentPin >= s.numPins) return true;
+            const pin = s.pins[s.currentPin];
+            // Bot "tries" with accuracy improving each attempt
+            const attempts = s.attempts || 0;
+            const accuracy = Math.min(0.95, 0.4 + attempts * 0.12);
+            const pushAmount = pin.height + (Math.random() < accuracy ? 0 : (Math.random() - 0.5) * 0.3);
+            const diff = Math.abs(pushAmount - pin.height);
+            if (diff < pin.tolerance) {
+                pin.set = true;
+                pin.springY = -0.1;
+                s.currentPin++;
+                s.feedback = 'Pin set!';
+                s.feedbackTimer = 1.5;
+                Audio.playSound('evidence');
+                if (s.currentPin >= s.numPins) {
+                    s.solved = true;
+                    s.feedback = 'Lock opened!';
+                    setTimeout(() => {
+                        closeMiniGame();
+                        if (onComplete) onComplete(true);
+                    }, 1200);
+                    return true;
+                }
+            } else {
+                s.attempts = (s.attempts || 0) + 1;
+                pin.springY = (pushAmount - pin.height) * 0.5;
+                s.feedback = diff < pin.tolerance * 2 ? 'Almost...' : 'Too far off';
+                s.feedbackTimer = 1;
+                s.shakeTimer = 0.3;
+                Audio.playSound('click');
+            }
+            return false;
+        }
+
+        if (active === 'bookshelf') {
+            const s = mgState;
+            if (s.solved) return true;
+            if (s.pullAnimation >= 0) return false; // wait for animation
+            const expected = s.correctSequence[s.currentStep];
+            // Bot might pick wrong book first time (more realistic)
+            let pick = expected;
+            if (s.currentStep === 0 && Math.random() < 0.35 && !s._triedWrong) {
+                // First attempt: pick a wrong book
+                s._triedWrong = true;
+                const wrong = Math.floor(Math.random() * s.books.length);
+                if (wrong !== expected) pick = wrong;
+            }
+            // Simulate the click at the right book position
+            const shelfW = Math.min(500, (mgW || 960) * 0.6);
+            const sx = ((mgW || 960) - shelfW) / 2;
+            const bookW = shelfW / s.books.length;
+            const clickX = sx + pick * bookW + bookW / 2;
+            const clickY = (mgH || 540) / 2;
+            handleMouseDown(clickX, clickY);
+            return false;
+        }
+
+        if (active === 'cipher') {
+            const s = mgState;
+            if (s.solved) return true;
+            // Shift toward correct answer, one step at a time
+            if (s.currentShift !== s.shift) {
+                // Figure out shortest direction
+                const diff = (s.shift - s.currentShift + 26) % 26;
+                const dir = diff <= 13 ? 1 : -1;
+                cipherShift(dir);
+                Audio.playSound('click');
+            }
+            return false;
+        }
+
+        return false;
+    }
+
     return {
         init,
         startSafeCracking, startLockPicking, startBookshelfPuzzle,
         startCipherDecoding,
-        updateAndRender, isActive, autoSolve,
+        updateAndRender, isActive, autoSolve, getActiveType, botStep,
         handleMouseDown, handleMouseMove, handleMouseUp, handleKeyDown,
     };
 })();
