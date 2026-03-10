@@ -917,11 +917,22 @@ const MiniGames = (() => {
         return active !== null;
     }
 
+    function autoSolve() {
+        if (!active || !onComplete) return false;
+        const cb = onComplete;
+        active = null;
+        mgState = {};
+        onComplete = null;
+        Engine.state.screen = 'playing';
+        cb(true);
+        return true;
+    }
+
     return {
         init,
         startSafeCracking, startLockPicking, startBookshelfPuzzle,
         startCipherDecoding,
-        updateAndRender, isActive,
+        updateAndRender, isActive, autoSolve,
         handleMouseDown, handleMouseMove, handleMouseUp, handleKeyDown,
     };
 })();

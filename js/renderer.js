@@ -1112,6 +1112,19 @@ const Renderer = (() => {
         setupMouseHover();
     }
 
+    // ── Auto-Play Indicator ──
+    function renderAutoPlayIndicator() {
+        if (typeof AutoPlay === 'undefined' || !AutoPlay.isRunning()) return;
+        const pulse = 0.6 + Math.sin(time * 4) * 0.4;
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.font = 'bold 14px "Courier New", monospace';
+        ctx.fillStyle = '#d4a020';
+        ctx.textAlign = 'left';
+        ctx.fillText('AUTO', 16, 42);
+        ctx.restore();
+    }
+
     // Patch renderRoom to include new features
     const _origRenderRoom = renderRoom;
     function enhancedRenderRoom() {
@@ -1122,6 +1135,7 @@ const Renderer = (() => {
         renderMinimapLabel();
         updateAccusationReveal();
         renderAutosaveIndicator();
+        renderAutoPlayIndicator();
     }
 
     return {

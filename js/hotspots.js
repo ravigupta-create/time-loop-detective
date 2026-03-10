@@ -268,8 +268,10 @@ const Hotspots = (() => {
         ctx.restore();
     }
 
+    function getHotspots() { return currentHotspots; }
+
     return {
         init, setRoomHotspots, addDynamicHotspots, removeDynamicHotspots,
-        setEnabled, render,
+        setEnabled, render, getHotspots,
     };
 })();
