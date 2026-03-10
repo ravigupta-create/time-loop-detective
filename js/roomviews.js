@@ -625,45 +625,54 @@ const RoomViews = (() => {
             const figH = h * 0.22;
             const figW = figH * 0.35;
 
+            // Feature 23: NPC idle animation offsets
+            let idleX = 0, idleY = 0;
+            try {
+                const idle = Effects.getNPCIdleOffset(npc.id, time);
+                idleX = idle.dx;
+                idleY = idle.dy;
+            } catch (e) {}
+
             // Floor shadow
             ctx.fillStyle = rgba(0, 0, 0, 0.25);
             ctx.beginPath();
-            ctx.ellipse(cx, baseY + 2, figW * 0.8, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx + idleX, baseY + 2, figW * 0.8, 4, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // Body silhouette (dark with color accent)
-            const breathe = Math.sin(time * 1.8 + i * 1.3) * 1.5;
+            const breathe = Math.sin(time * 1.8 + i * 1.3) * 1.5 + idleY;
             const bodyGrad = ctx.createLinearGradient(cx, baseY - figH, cx, baseY);
             bodyGrad.addColorStop(0, 'rgba(15,15,25,0.9)');
             bodyGrad.addColorStop(0.4, color);
             bodyGrad.addColorStop(1, 'rgba(15,15,25,0.95)');
 
+            const ncx = cx + idleX; // NPC center x with idle offset
             ctx.fillStyle = bodyGrad;
             // Torso
             ctx.beginPath();
-            ctx.ellipse(cx, baseY - figH * 0.35 + breathe, figW, figH * 0.4, 0, 0, Math.PI * 2);
+            ctx.ellipse(ncx, baseY - figH * 0.35 + breathe, figW, figH * 0.4, 0, 0, Math.PI * 2);
             ctx.fill();
             // Legs
             ctx.fillStyle = 'rgba(15,15,25,0.9)';
-            ctx.fillRect(cx - figW * 0.4, baseY - figH * 0.15, figW * 0.35, figH * 0.2);
-            ctx.fillRect(cx + figW * 0.05, baseY - figH * 0.15, figW * 0.35, figH * 0.2);
+            ctx.fillRect(ncx - figW * 0.4, baseY - figH * 0.15, figW * 0.35, figH * 0.2);
+            ctx.fillRect(ncx + figW * 0.05, baseY - figH * 0.15, figW * 0.35, figH * 0.2);
 
             // Head
             ctx.fillStyle = 'rgba(20,20,30,0.95)';
             ctx.beginPath();
-            ctx.arc(cx, baseY - figH * 0.78 + breathe, figW * 0.45, 0, Math.PI * 2);
+            ctx.arc(ncx, baseY - figH * 0.78 + breathe, figW * 0.45, 0, Math.PI * 2);
             ctx.fill();
 
             // Glowing eyes
             ctx.fillStyle = rgba(200, 200, 220, 0.6);
-            ctx.fillRect(cx - 4, baseY - figH * 0.8 + breathe, 3, 2);
-            ctx.fillRect(cx + 2, baseY - figH * 0.8 + breathe, 3, 2);
+            ctx.fillRect(ncx - 4, baseY - figH * 0.8 + breathe, 3, 2);
+            ctx.fillRect(ncx + 2, baseY - figH * 0.8 + breathe, 3, 2);
 
             // Name label
             ctx.fillStyle = rgba(200, 200, 212, 0.5);
             ctx.font = '10px "Courier New", monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(npcData ? npcData.name.split(' ').pop() : '', cx, baseY + 14);
+            ctx.fillText(npcData ? npcData.name.split(' ').pop() : '', ncx, baseY + 14);
             ctx.textAlign = 'start';
 
             // Register hotspot

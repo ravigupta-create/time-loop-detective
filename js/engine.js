@@ -80,7 +80,7 @@ const Engine = (() => {
             else if (key === 'a') UI.showAccusation();
             else if (key === 'm') UI.toggleSound();
             else if (key === 'i') Inventory.toggleInventory();
-            else if (key === 'h' || key === '?') UI.showHelp();
+            else if (key === 'h' || key === '?') UI.toggleShortcutOverlay();
             else if (key === 's') save();
             else if (key === 'q') quickSave();
             // Number keys 1-9 for quick room navigation
@@ -154,6 +154,9 @@ const Engine = (() => {
             triggerMidnight();
             return;
         }
+
+        // Feature 31: Autosave check
+        checkAutosave();
 
         // Update HUD
         UI.updateHUD();
@@ -247,6 +250,7 @@ const Engine = (() => {
         state.currentLoopEvents = [];
         state.visitedLocations = new Set(['your_room']);
         state.talkedTo = new Set();
+        state.suspicion = {}; // Feature 13: Reset suspicion each loop
 
         // Knowledge persists across loops
         // Evidence, facts, flags all persist
@@ -370,6 +374,9 @@ const Engine = (() => {
         Audio.playSound('evidence');
         notifyEvidence(`Evidence Found: ${ev.name}`);
 
+        // Feature 20: Evidence discovery animation
+        try { Renderer.triggerEvidenceAnimation(ev.name); } catch (e) {}
+
         // Narration
         const lines = GameData.narration.evidenceFound;
         showNarration(lines[Math.floor(Math.random() * lines.length)]);
@@ -454,6 +461,12 @@ const Engine = (() => {
 
         advanceTime(10);
 
+        // Feature 13: Check suspicion
+        if (isNPCSuspicious(npcId)) {
+            UI.showExamineText(`${GameData.npcs[npcId]?.name || 'They'} eyes you with deep suspicion. "I've noticed you snooping around, Detective. Perhaps you should mind your own affairs for a while."`);
+            return;
+        }
+
         // Wrong accusation consequences — NPCs you wrongly accused are hostile
         if (state.flags['accused_' + npcId] && state.npcTrust[npcId] < 0) {
             const hostileMsg = GameData.wrongAccusationDialogue?.npc_hostile ||
@@ -498,6 +511,12 @@ const Engine = (() => {
     // ── Examine Object ──
     function examineObject(objData) {
         state.currentLoopEvents.push({ type: 'examine', id: objData.id, time: state.time });
+
+        // Feature 13: Raise suspicion if NPCs present
+        const npcsHere = getNPCsAtLocationWithOverrides(state.currentLocation, state.time);
+        if (npcsHere.length > 0 && GameData.suspicionConfig) {
+            npcsHere.forEach(n => raiseSuspicion(n.id, GameData.suspicionConfig.examineNearNPC));
+        }
 
         // Trigger mini-games for specific objects
         if (objData.id === 'wall_safe' && state.flags.knows_safe_code && !state.flags.safe_opened) {
@@ -572,6 +591,12 @@ const Engine = (() => {
                     return;
                 }
                 discoverEvidence(objData.evidence);
+                // Show unlocked examine text if available (Feature 2: shed key)
+                if (objData.examineUnlocked) {
+                    UI.showExamineText(objData.examineUnlocked);
+                    advanceTime(5);
+                    return;
+                }
             }
         }
 
@@ -633,7 +658,8 @@ const Engine = (() => {
             visitedLocations: [...state.visitedLocations],
             achievements: [...state.achievements],
             inventory: Inventory.getSaveData(),
-            version: 2,
+            suspicion: state.suspicion || {},
+            version: 3,
         };
         try {
             localStorage.setItem('ravenholm_save', JSON.stringify(saveData));
@@ -668,6 +694,7 @@ const Engine = (() => {
             state.started = true;
 
             if (data.inventory) Inventory.loadSaveData(data.inventory);
+            state.suspicion = data.suspicion || {};
 
             return true;
         } catch (e) {
@@ -720,7 +747,7 @@ const Engine = (() => {
         });
 
         // Check for prevention ending
-        if (state.flags.evelyn_full_confession && state.loop >= 5 && state.time < 1380) {
+        if (state.flags.evelyn_full_confession && state.loop >= 3 && state.time < 1380) {
             unlockAchievement('prevention');
             unlockAchievement('loop_breaker');
             return 'prevention';
@@ -915,10 +942,121 @@ const Engine = (() => {
         notify('New Game+ active: Master Suite and Tower unlocked from the start.');
     }
 
+    // ── FEATURE 13: Suspicion System ──
+    function raiseSuspicion(npcId, amount) {
+        if (!state.suspicion) state.suspicion = {};
+        if (!state.suspicion[npcId]) state.suspicion[npcId] = 0;
+        state.suspicion[npcId] += amount;
+        const cfg = GameData.suspicionConfig;
+        if (state.suspicion[npcId] >= cfg.highThreshold) {
+            notify(`${GameData.npcs[npcId]?.name || npcId} is suspicious of your snooping!`);
+            // Alert nearby NPCs
+            const npcsHere = getNPCsAtLocation(state.currentLocation, state.time);
+            npcsHere.forEach(n => {
+                if (n.id !== npcId) {
+                    if (!state.suspicion[n.id]) state.suspicion[n.id] = 0;
+                    state.suspicion[n.id] += cfg.alertOtherAmount;
+                }
+            });
+        }
+    }
+
+    function getSuspicion(npcId) {
+        return (state.suspicion && state.suspicion[npcId]) || 0;
+    }
+
+    function isNPCSuspicious(npcId) {
+        const cfg = GameData.suspicionConfig;
+        return getSuspicion(npcId) >= cfg.highThreshold;
+    }
+
+    // ── FEATURE 14: Alibi Tracker ──
+    function getAlibiData() {
+        const keyTimes = [1380, 1410, 1440]; // 11 PM, 11:30 PM, midnight
+        const alibis = {};
+        for (const [id, npc] of Object.entries(GameData.npcs)) {
+            if (id === 'lord_ashworth') continue;
+            alibis[id] = { name: npc.name, times: {} };
+            keyTimes.forEach(t => {
+                const slot = npc.schedule.find(s => t >= s.start && t < s.end);
+                if (slot) {
+                    alibis[id].times[t] = {
+                        location: slot.location,
+                        locationName: GameData.locations[slot.location]?.name || slot.location,
+                        activity: slot.activity,
+                    };
+                }
+            });
+        }
+        return alibis;
+    }
+
+    // ── FEATURE 10: Schedule Overrides ──
+    function getNPCsAtLocationWithOverrides(locationId, time) {
+        const present = [];
+        const overrides = GameData.scheduleOverrides?.[state.loop];
+        for (const [id, npc] of Object.entries(GameData.npcs)) {
+            if (id === 'lord_ashworth' && time >= 1410 && state.loop > 0) continue;
+            // Check overrides first
+            let slot = null;
+            if (overrides && overrides[id]) {
+                slot = overrides[id].find(s => time >= s.start && time < s.end);
+            }
+            if (!slot) {
+                slot = npc.schedule.find(s => time >= s.start && time < s.end);
+            }
+            if (slot && slot.location === locationId) {
+                present.push({ id, ...npc, activity: slot.activity });
+            }
+        }
+        return present;
+    }
+
+    // ── FEATURE 18: Gift System ──
+    function giveGiftToNPC(npcId) {
+        const giftDef = GameData.npcGifts?.[npcId];
+        if (!giftDef) return false;
+        if (!Inventory.hasItem(giftDef.item)) return false;
+        if (state.flags['gift_given_' + npcId]) return false;
+
+        Inventory.removeItem(giftDef.item);
+        adjustNPCTrust(npcId, giftDef.trustBoost);
+        state.flags['gift_given_' + npcId] = true;
+        if (giftDef.unlocks) addFact(giftDef.unlocks);
+        notify(giftDef.message);
+        return true;
+    }
+
+    // ── FEATURE 31: Autosave ──
+    let lastAutosaveTime = 0;
+    function checkAutosave() {
+        if (state.time - lastAutosaveTime >= 30) {
+            lastAutosaveTime = state.time;
+            save();
+            // Feature 31: Show autosave indicator
+            try { Renderer.triggerAutosaveIndicator(); } catch (e) {}
+        }
+    }
+
+    // ── FEATURE 32: Per-loop Statistics ──
+    function getLoopStats() {
+        const evThisLoop = state.currentLoopEvents.filter(e => e.type === 'evidence').length;
+        const npcsThisLoop = state.talkedTo.size;
+        const eavesThisLoop = state.currentLoopEvents.filter(e => e.type === 'eavesdrop').length;
+        const roomsThisLoop = state.visitedLocations.size;
+        const totalMinutes = state.time - 360;
+        const maxMinutes = 1440 - 360;
+        const efficiency = Math.round((state.totalActions > 0 ? (evThisLoop + npcsThisLoop) / state.totalActions : 0) * 100);
+        return { evThisLoop, npcsThisLoop, eavesThisLoop, roomsThisLoop, efficiency };
+    }
+
+    // Override getNPCsAtLocation to use schedule overrides
+    const _originalGetNPCsAtLocation = getNPCsAtLocation;
+
     // Public API
     return {
         state, input, init, advanceTime, moveToLocation,
-        discoverEvidence, getNPCsAtLocation, talkToNPC,
+        discoverEvidence, getNPCsAtLocation: getNPCsAtLocationWithOverrides, talkToNPC,
         examineObject, addFact, setFlag, addProfileNote,
         notify, notifyEvidence, showNarration,
         save, load, hasSave, clearSave, resetState,
@@ -927,5 +1065,8 @@ const Engine = (() => {
         unlockAchievement, getNPCTrust, adjustNPCTrust, isPostMurder,
         setGameMode, getGameMode, getTimeCostMultiplier,
         getSpeedrunElapsed, applyNewGamePlusBonuses,
+        // New features
+        raiseSuspicion, getSuspicion, isNPCSuspicious,
+        getAlibiData, giveGiftToNPC, checkAutosave, getLoopStats,
     };
 })();

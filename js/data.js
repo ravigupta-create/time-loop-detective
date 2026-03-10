@@ -96,6 +96,9 @@ const locations = {
               evidence: 'empty_vial', requiresLoop: 2 },
             { id: 'dining_painting', name: 'Family Portrait', icon: '🖼️',
               examine: 'A large oil painting of the Ashworth family from perhaps ten years ago. Lord Ashworth stands proud, Lady Evelyn is perfectly composed, James looks bored, and Lily... Lily is looking directly at the painter with an expression of pure defiance. Someone has scratched a thin line across Lord Ashworth\'s throat with a pin. Recent, too — the paint dust hasn\'t settled.' },
+            { id: 'prescription_pad', name: 'Prescription Pad', icon: '💊',
+              examine: 'A prescription pad left on the sideboard. Top sheet reads: "Digitalis, 0.125mg daily — Lord V. Ashworth." Digitalis can be lethal in high doses, but this dosage is standard for cardiac arrhythmia. Dr. Cross was treating, not poisoning.',
+              evidence: 'cross_prescription', requiresLoop: 2 },
         ],
         exits: [
             { to: 'grand_hallway', label: 'Grand Hallway', icon: '🚪' },
@@ -224,6 +227,9 @@ const locations = {
             { id: 'medical_bag', name: 'Dr. Cross\'s Medical Bag', icon: '💼',
               examine: 'Dr. Cross\'s worn leather medical bag, left on the side table. Inside: stethoscope, pill bottles, and a small red notebook. The notebook contains six months of Lord Ashworth\'s medical records. Headaches, nausea, muscle weakness, cardiac irregularities — all symptoms of aconitine poisoning, documented meticulously but never connected.',
               evidence: 'medication_records', requiresLoop: 2 },
+            { id: 'lily_diary', name: 'Lily\'s Journal', icon: '📓',
+              examine: 'A leather-bound journal tucked under a cushion. Lily\'s handwriting: "I could kill him for what he\'s done to this family." Page after page of rage — but read further: "I love him, despite everything. I just wish he would SEE us." Not a killer. Just a frustrated daughter.',
+              evidence: 'lily_journal', requiresLoop: 2 },
         ],
         exits: [
             { to: 'grand_hallway', label: 'Grand Hallway', icon: '🚪' },
@@ -253,6 +259,9 @@ const locations = {
             { id: 'champagne_glass', name: 'Abandoned Glass', icon: '🥂',
               examine: 'A champagne flute left on a windowsill. Two sets of lip marks — one with Lady Evelyn\'s distinctive crimson lipstick, one without. Underneath: a folded napkin with a time scrawled on it: "11:15 — passage." In Rex\'s handwriting.',
               evidence: 'passage_timing_note', requiresLoop: 3 },
+            { id: 'james_coat', name: 'James\'s Coat', icon: '🧥',
+              examine: 'James\'s evening coat, slung over a chair. In the inside pocket: a silver hip flask. The contents smell bitter — suspicious, but probably just cheap whiskey from a man who can\'t afford the good stuff anymore.',
+              evidence: 'james_flask', requiresLoop: 1 },
         ],
         exits: [
             { to: 'grand_hallway', label: 'Grand Hallway', icon: '🚪' },
@@ -279,7 +288,9 @@ const locations = {
               examine: 'A stone gazebo overlooking the moor. On the bench: a pair of leather gloves, too large for a woman. The initials "R.D." are embossed on the cuff. Rex Dalton was here — recently, despite the rain.',
               evidence: 'rex_gloves', requiresLoop: 2 },
             { id: 'gardener_shed', name: 'Garden Shed', icon: '🏚️',
-              examine: 'Locked. Through the window you can see gardening tools — and a lockbox. Mrs. Blackwood mentioned the shed key hangs in the Kitchen.' },
+              examine: 'Locked. Through the window you can see gardening tools — and a lockbox. Mrs. Blackwood mentioned the shed key hangs in the Kitchen.',
+              examineUnlocked: 'The shed door creaks open. Inside: pruning shears, a watering can, bags of soil — and a mortar and pestle stained deep purple. Wolfsbane residue. Someone has been processing poison here, grinding the flowers into a concentrated tincture. The tools of murder, hidden in plain sight among garden implements.',
+              evidence: 'wolfsbane_residue', requiresFlag: 'has_shed_key' },
             { id: 'muddy_path', name: 'Muddy Footprints', icon: '👣',
               examine: 'Fresh footprints in the mud leading from the gazebo toward the manor. Large — men\'s size 11 or 12. The stride is long and purposeful, not a casual walk. They lead to the cellar entrance. Someone made this trip recently, in the dark, in the rain.',
               evidence: 'muddy_footprints', requiresLoop: 3 },
@@ -849,6 +860,46 @@ const evidence = {
         location: 'tower',
         importance: 3,
     },
+    // ── FEATURE 1: Blackwood testimony as discoverable evidence ──
+    blackwood_testimony: {
+        name: 'Mrs. Blackwood\'s Testimony',
+        description: 'Mrs. Blackwood saw Lady Evelyn leaving the Library at 11:45 PM with a small vial in her hand. Critical eyewitness placing Evelyn at the crime scene.',
+        category: 'records',
+        location: 'kitchen',
+        importance: 5,
+    },
+    // ── FEATURE 2: Wolfsbane residue from shed ──
+    wolfsbane_residue: {
+        name: 'Wolfsbane Residue on Tools',
+        description: 'Garden tools in the shed show traces of purple wolfsbane residue. Someone processed aconitum here — crushing, extracting, concentrating. The mortar and pestle are stained deep violet.',
+        category: 'physical',
+        location: 'garden',
+        importance: 4,
+    },
+    // ── FEATURE 7: Red herring evidence ──
+    james_flask: {
+        name: 'James\'s Hip Flask',
+        description: 'A silver hip flask found in James\'s coat. Contains whiskey with a bitter aftertaste — suspicious, but likely just cheap spirits from a desperate man.',
+        category: 'physical',
+        location: 'ballroom',
+        importance: 1,
+    },
+    lily_journal: {
+        name: 'Lily\'s Private Journal',
+        description: '"I could kill him for what he\'s done to this family." Lily\'s journal is full of rage toward her father — but read further and it\'s clearly the frustration of a daughter who loves a flawed man.',
+        category: 'documents',
+        location: 'drawing_room',
+        importance: 1,
+        requiresLoop: 2,
+    },
+    cross_prescription: {
+        name: 'Dr. Cross\'s Prescription',
+        description: 'A prescription for digitalis — a heart medication that can be lethal in high doses. But the dosage is therapeutic, and the patient is Lord Ashworth. Cross was treating, not poisoning.',
+        category: 'records',
+        location: 'dining_room',
+        importance: 1,
+        requiresLoop: 2,
+    },
 };
 
 // ── EVIDENCE CONNECTIONS (for the board) ──
@@ -883,6 +934,15 @@ const connections = [
     { from: 'passage_timing_note', to: 'secret_passage', label: 'Coordinated timing' },
     { from: 'passage_timing_note', to: 'bell_log', label: 'Timeline matches' },
     { from: 'cipher_message', to: 'ancient_clock', label: 'Temporal warning' },
+    // ── Feature 1 & 2: New connections ──
+    { from: 'blackwood_testimony', to: 'poison_vial', label: 'Eyewitness saw vial' },
+    { from: 'blackwood_testimony', to: 'brandy_glass', label: 'Evelyn at crime scene' },
+    { from: 'wolfsbane_residue', to: 'wolfsbane_garden', label: 'Processing site' },
+    { from: 'wolfsbane_residue', to: 'poison_vial', label: 'Tool to tincture' },
+    // ── Feature 7: Red herring connections ──
+    { from: 'james_flask', to: 'gambling_debts', label: 'Desperate man\'s comfort' },
+    { from: 'lily_journal', to: 'lily_note', label: 'Frustrated but innocent' },
+    { from: 'cross_prescription', to: 'medication_records', label: 'Legitimate treatment' },
 ];
 
 // ── EAVESDROP EVENTS ──
@@ -1109,6 +1169,81 @@ const eavesdrops = [
         reveals: ['final_plan_confirmed', 'escape_planned', 'passage_timing'],
         timeAdvance: 15,
         requiresLoop: 4,
+    },
+    // ── FEATURE 6: 5 new eavesdrop events ──
+    {
+        id: 'evelyn_alone_master',
+        time: 1260, location: 'master_suite',
+        speakers: 'Lady Evelyn (alone)',
+        lines: [
+            { speaker: 'evelyn', text: 'Almost time. Everything is in place.' },
+            { speaker: 'evelyn', text: 'The brandy, the passage, Rex... all of it. Thirty years of planning, and it comes down to tonight.' },
+            { speaker: 'evelyn', text: 'He never suspected me. The devoted wife. The caring nurse. The woman who mixed his nightcap every evening.' },
+            { speaker: 'evelyn', text: 'After tonight, I\'ll never mix another drink again.' },
+        ],
+        reveals: ['evelyn_soliloquy', 'evelyn_premeditated'],
+        timeAdvance: 10,
+        requiresLoop: 3,
+    },
+    {
+        id: 'james_isabelle_moment',
+        time: 1020, location: 'drawing_room',
+        speakers: 'James & Isabelle',
+        lines: [
+            { speaker: 'james', text: 'Isabelle, if something happens tonight — I want you to know...' },
+            { speaker: 'isabelle', text: 'Don\'t talk like that. Nothing is going to happen.' },
+            { speaker: 'james', text: 'You don\'t know this family. We destroy everything we touch.' },
+            { speaker: 'isabelle', text: 'I know more about this family than you think, James.' },
+            { speaker: 'james', text: 'What do you mean?' },
+            { speaker: 'isabelle', text: '...Nothing. Just — stay close tonight. Trust me.' },
+        ],
+        reveals: ['isabelle_protective_of_james', 'james_senses_danger'],
+        timeAdvance: 10,
+        requiresLoop: 2,
+    },
+    {
+        id: 'blackwood_finch_midnight',
+        time: 1410, location: 'kitchen',
+        speakers: 'Mrs. Blackwood & Mr. Finch',
+        lines: [
+            { speaker: 'blackwood', text: 'Something is wrong tonight, Finch. I can feel it.' },
+            { speaker: 'finch', text: 'Keep your voice down. The walls have ears in this house.' },
+            { speaker: 'blackwood', text: 'I saw her. Coming from the library. She had something in her hand — a vial.' },
+            { speaker: 'finch', text: 'Mrs. Blackwood, please—' },
+            { speaker: 'blackwood', text: 'We should have said something. Twenty years of silence, and now a man is dead because of it.' },
+        ],
+        reveals: ['servants_complicit_silence', 'blackwood_saw_vial'],
+        timeAdvance: 10,
+        requiresLoop: 3,
+    },
+    {
+        id: 'rex_panicking_garden',
+        time: 1200, location: 'garden',
+        speakers: 'Rex Dalton (alone)',
+        lines: [
+            { speaker: 'rex', text: 'God. What am I doing? What am I doing?' },
+            { speaker: 'rex', text: 'The passage is clear. The cufflinks are polished. The car is waiting at the back gate.' },
+            { speaker: 'rex', text: 'One more hour. Just one more hour and it\'s over. We\'ll be free.' },
+            { speaker: 'rex', text: '...Will we? Will we ever really be free of this?' },
+        ],
+        reveals: ['rex_guilt', 'rex_escape_preparations'],
+        timeAdvance: 10,
+        requiresLoop: 2,
+    },
+    {
+        id: 'lily_thomas_ballroom',
+        time: 1080, location: 'ballroom',
+        speakers: 'Lily Ashworth & Father Thomas',
+        lines: [
+            { speaker: 'lily', text: 'Father Thomas, you hear confessions. Do you know something about tonight?' },
+            { speaker: 'thomas', text: 'Child, you know I cannot break the seal of confession.' },
+            { speaker: 'lily', text: 'Even if someone is going to die?' },
+            { speaker: 'thomas', text: '...Even then. But I can tell you this: stay close to your brother. And stay away from the library after eleven.' },
+            { speaker: 'lily', text: 'That tells me everything I need to know.' },
+        ],
+        reveals: ['thomas_indirect_warning', 'lily_knows_library_danger'],
+        timeAdvance: 10,
+        requiresLoop: 2,
     },
 ];
 
@@ -2080,6 +2215,7 @@ const dialogues = {
             text: '"I saw her." Mrs. Blackwood\'s composure finally cracks. "At 11:45 PM. Lady Evelyn. She wasn\'t in the kitchen like she claimed. She was coming OUT of the Library. She had something in her hand — a small vial." She grips the counter. "I said nothing. God help me, I said nothing."',
             requires: ['brandy_glass'],
             reveals: ['blackwood_testimony'],
+            evidence: 'blackwood_testimony',
             responses: [
                 { text: 'Thank you for telling me.', next: null },
             ]
@@ -2191,7 +2327,7 @@ const endings = {
     },
     prevention: {
         title: 'Midnight Never Comes',
-        requires: { flags: ['evelyn_full_confession'], minLoop: 5 },
+        requires: { flags: ['evelyn_full_confession'], minLoop: 3 },
         text: 'Armed with the full, terrible truth — every confession, every piece of evidence, every thread of conspiracy woven through this house of lies — you make your move before the killers can make theirs. At 11 PM, while the gala still glitters and the champagne still flows, you confront Lady Evelyn in the drawing room.\n\nShe sees it in your eyes: you know everything. The poison. The affair. The plan with Rex. The secret passage. The brandy that was meant to be Lord Ashworth\'s last drink. Her composure shatters, not with a scream, but with silence — the silence of a woman who realizes the game is over before the final move.\n\nRex Dalton never reaches the Library. Mr. Finch, quietly informed, locks the cellar passage. Dr. Cross is summoned to Lord Ashworth\'s side. And Lord Ashworth — stubborn, paranoid, brilliant Lord Ashworth — lives to see another morning for the first time in what feels like forever.\n\nThe ancient clock in the tower chimes once at midnight. Not the heavy, grinding toll of the loop resetting, but a single, pure note — clear as a church bell, clean as absolution. The mechanism exhales. The gears slow. The humming that has saturated Ravenholm Manor like a fever finally, mercifully, stops.\n\nAs dawn breaks on December 22nd — a day that hasn\'t existed in a very long time — the rain stops too. Light spills over the moor, touching the garden, the greenhouse, the stone walls of the manor. Lord Ashworth stands at his window, alive, watching the sunrise with the expression of a man who has been given a gift he doesn\'t yet understand. The loop was never about justice after the fact. It was about this: prevention. Not punishment, but salvation. Not solving the crime, but stopping it.',
         rating: 'Perfect Ending — True Resolution',
     },
@@ -2494,6 +2630,47 @@ const deductions = [
         category: 'revelation',
         importance: 4,
     },
+    // ── FEATURE 11: 5 more deductions ──
+    {
+        id: 'james_cleared',
+        title: 'James Ashworth: Cleared',
+        conclusion: 'James\'s gambling debts gave him motive, and his hip flask looked suspicious — but the flask contains only cheap whiskey. He\'s a desperate man, not a killer. His debts actually require his father ALIVE to keep paying his allowance.',
+        requires: ['gambling_debts', 'james_flask'],
+        category: 'suspect',
+        importance: 2,
+    },
+    {
+        id: 'lily_cleared',
+        title: 'Lily Ashworth: Cleared',
+        conclusion: 'Lily\'s journal is full of fury toward her father — but read past the rage, and it\'s the frustration of a daughter who loves a flawed man. Her note at the piano bench is about emotional freedom, not murder. She\'s innocent.',
+        requires: ['lily_journal', 'lily_note'],
+        category: 'suspect',
+        importance: 2,
+    },
+    {
+        id: 'cross_cleared',
+        title: 'Dr. Cross: Cleared',
+        conclusion: 'The digitalis prescription looks damning — a heart drug that can kill. But the dosage is therapeutic, matching Lord Ashworth\'s genuine cardiac symptoms. Cross was a negligent doctor, not a poisoner.',
+        requires: ['cross_prescription', 'medication_records'],
+        category: 'suspect',
+        importance: 2,
+    },
+    {
+        id: 'evelyn_full_plan',
+        title: 'Evelyn\'s Complete Plot',
+        conclusion: 'Lady Evelyn took out a £2M insurance policy, timed the poisoning to begin 18 months ago, and coordinated with Rex to deliver the killing blow. The murder is fully premeditated, coldly calculated, and financially motivated.',
+        requires: ['insurance_policy', 'poison_vial', 'passage_timing_note'],
+        category: 'motive',
+        importance: 5,
+    },
+    {
+        id: 'murder_weapon_confirmed',
+        title: 'Murder Weapon Confirmed',
+        conclusion: 'The drugged brandy glass, the empty vial of sleeping agent, the wolfsbane residue on garden tools — the murder weapon is a combination of chronic aconitine poisoning culminating in a sedative-laced brandy that left Lord Ashworth helpless.',
+        requires: ['brandy_glass', 'wolfsbane_residue'],
+        category: 'method',
+        importance: 5,
+    },
 ];
 
 // ── POST-MURDER ROOM DESCRIPTIONS (after 11:30 PM) ──
@@ -2590,6 +2767,156 @@ function validateAccusation(suspect, accomplice, evidencePresented) {
     return 'wrong_accusation';
 }
 
+// ── FEATURE 5: NPC DEJA VU GREETINGS (loop 3+) ──
+const dejaVuGreetings = {
+    father_thomas: '"Detective..." Father Thomas pauses, his brow furrowed. "Forgive me, but I have the strangest feeling. Haven\'t we had this conversation before? The words feel... rehearsed, somehow."',
+    lily_ashworth: '"You look at me as though you already know what I\'m going to say." Lily studies your face. "That\'s unsettling. It\'s like you\'ve read the script and I\'m the only one who doesn\'t know the ending."',
+    james_ashworth: '"Detective, I swear I just had the most vivid déjà vu. Like I\'ve been standing in this exact spot, saying these exact words, before." James shakes his head. "Must be the brandy."',
+    dr_cross: '"How peculiar. I could swear we\'ve met like this before — same room, same time, same look on your face." Dr. Cross removes his spectacles and polishes them nervously. "The mind plays strange tricks in this house."',
+    mr_finch: 'Mr. Finch gives you an unusually long look. "Sir, I pride myself on routine. But today... today feels like a page I\'ve already turned. As if the entire day has been photocopied from yesterday."',
+    rex_dalton: 'Rex flinches when he sees you. "Christ — I just had the worst feeling. Like everything that\'s about to happen has already happened." He forces a laugh. "Ignore me. Long night ahead."',
+};
+
+// ── FEATURE 8: NPC AMBIENT LINES ──
+const npcAmbientLines = {
+    lord_ashworth: [
+        'Lord Ashworth mutters something about "the audit" without looking up.',
+        'You hear Lord Ashworth say to himself: "The clock mechanism... it has to work."',
+        'Lord Ashworth flips through his diary, his expression darkening with each page.',
+    ],
+    lady_evelyn: [
+        'Lady Evelyn adjusts a flower arrangement with calculated precision.',
+        '"Everything must be perfect tonight," Lady Evelyn murmurs to no one.',
+        'Lady Evelyn checks her watch — the third time in ten minutes.',
+    ],
+    james_ashworth: [
+        'James rattles ice in an empty glass, staring at nothing.',
+        'You overhear James: "...just need until the end of the week..."',
+        'James paces by the window, phone pressed to his ear.',
+    ],
+    lily_ashworth: [
+        'Lily scribbles furiously in her journal, occasionally glancing up with sharp eyes.',
+        '"This family..." Lily whispers, shaking her head.',
+        'Lily reads a chemistry text, her finger tracing molecular diagrams.',
+    ],
+    rex_dalton: [
+        'Rex straightens his cufflinks nervously — both of them, for now.',
+        'Rex checks his phone, then deletes a message with practiced speed.',
+        '"Almost time," Rex mutters, then catches himself.',
+    ],
+    dr_cross: [
+        'Dr. Cross reviews medical notes, his pen hovering over a word he can\'t bring himself to write.',
+        '"The symptoms are consistent with..." Cross trails off when he notices you.',
+        'Dr. Cross takes Lord Ashworth\'s pulse, frowning at the result.',
+    ],
+    father_thomas: [
+        'Father Thomas\'s lips move in silent prayer, his rosary clicking softly.',
+        '"Lord, give me the strength to do what is right," Thomas whispers.',
+        'Thomas stares at his clasped hands as if they hold a terrible secret.',
+    ],
+    isabelle: [
+        'Isabelle studies the room with the practiced eye of someone cataloguing details.',
+        'You catch Isabelle taking discreet notes in a small leather-bound book.',
+        'Isabelle\'s gaze follows Lady Evelyn with an intensity that has nothing to do with admiration.',
+    ],
+    mrs_blackwood: [
+        'Mrs. Blackwood polishes a silver tray with unnecessary vigor.',
+        '"Thirty years of service..." Blackwood sighs, shaking her head.',
+        'Mrs. Blackwood eyes the brandy decanter with visible unease.',
+    ],
+    mr_finch: [
+        'Mr. Finch stands at attention, his expression a mask of professional neutrality.',
+        'Finch straightens a painting that was already perfectly straight.',
+        '"The household runs on routine, sir," Finch says to the air. "Even tonight."',
+    ],
+};
+
+// ── FEATURE 9: PRE-GALA BALLROOM DESCRIPTION ──
+const preGalaDescriptions = {
+    ballroom: 'The ballroom is a hive of activity. Staff arrange towering floral centerpieces — white roses and dark ivy — while someone tests the chandelier lights, sending prismatic shards dancing across the ceiling. A string quartet tunes instruments in the corner. The champagne is being chilled, the seating cards placed, the silver polished to mirrors. Everything is being prepared for Lord Ashworth\'s grand announcement. The room smells of fresh flowers and floor wax and anticipation.',
+};
+
+// ── FEATURE 10: LOOP-SPECIFIC NPC SCHEDULE CHANGES (loop 4+) ──
+const scheduleOverrides = {
+    4: {
+        lady_evelyn: [
+            { start: 1260, end: 1320, location: 'library', activity: 'Preparing the brandy early — she\'s changed her routine.' },
+        ],
+        rex_dalton: [
+            { start: 1140, end: 1200, location: 'garden', activity: 'Checking the passage entrance in the garden first.' },
+        ],
+    },
+};
+
+// ── FEATURE 12: EXPANDED EPILOGUES ──
+const expandedEpilogues = {
+    true_justice: {
+        lady_evelyn: 'Lady Evelyn was arrested at dawn, her composure finally shattering as they led her from the manor in handcuffs. She was tried at the Old Bailey and sentenced to life imprisonment. In prison, she never spoke of the murder. She tended the prison garden — everything except the wolfsbane.',
+        rex_dalton: 'Rex Dalton was apprehended at Dover, attempting to board a ferry to Calais with two suitcases of cash. He confessed within hours, blaming Evelyn for the plan. He received 25 years. The Swiss accounts were frozen.',
+        james_ashworth: 'James inherited the estate and, slowly, began to pay off his debts. He never gambled again. He kept his father\'s study exactly as it was, visiting it every evening at 11 PM to sit in the chair where Lord Ashworth died.',
+        lily_ashworth: 'Lily left for London within the week, enrolling in a chemistry program at Imperial College. She published poetry under a pen name and never returned to Ravenholm except once — to plant new flowers in the greenhouse. Not wolfsbane.',
+        dr_cross: 'Dr. Cross retired from medicine, his conscience too heavy to bear the Hippocratic Oath. He wrote a memoir about the case but burned the manuscript before publication. He died three years later, peacefully, in his sleep.',
+        isabelle: 'Isabelle Moreau — or rather, Isabelle Ashworth — revealed her true identity at the trial. James never forgave the deception. She returned to France, opened a private investigation firm, and never took another case involving family.',
+        father_thomas: 'Father Thomas left the priesthood. The seal of confession had protected a murderer, and he could not reconcile that with his faith. He became a grief counselor, helping families of murder victims find peace.',
+        mrs_blackwood: 'Mrs. Blackwood testified at the trial — her eyewitness account of Lady Evelyn leaving the library with the vial was the prosecution\'s strongest evidence. She retired to a cottage in Cornwall with thirty years of severance pay.',
+        mr_finch: 'Mr. Finch stayed on at the manor, serving James as he had served Lord Ashworth. He maintained the house immaculately, as if by keeping everything in order, he could hold back the chaos that had consumed the family.',
+    },
+    prevention: {
+        lord_ashworth: 'Lord Ashworth survived the night and lived another twelve years. He reformed his will, sought treatment for the aconitine damage, and spent his remaining years in the tower, studying the ancient clock. He never spoke of the loop.',
+        lady_evelyn: 'Lady Evelyn was committed to a private asylum, her mind unraveling from the realization that she had been caught before she could act. She spent her days arranging and rearranging flowers that were never quite right.',
+        rex_dalton: 'Rex Dalton fled the country before dawn, taking nothing but his passport and the clothes on his back. He was last seen in Montevideo, running a bar under an assumed name. The Swiss accounts remained frozen.',
+        the_clock: 'The ancient clock mechanism fell silent at midnight. Its gears, which had been turning for millennia, finally rested. Whatever intelligence had designed it seemed satisfied. The loop was broken — not by justice, but by prevention.',
+    },
+    partial_truth: {
+        the_investigation: 'The police investigation continued for months, but without the full picture, the case grew cold. Rex Dalton was convicted as an accomplice, but Lady Evelyn\'s role remained unproven. She lived out her days at the manor, a free woman haunted by what she nearly accomplished.',
+        ravenholm: 'The manor stood, its secrets not fully told. Visitors sometimes reported hearing the clock chime at midnight, even though no clock remained. The loop was broken, but its echo lingered in the stones.',
+    },
+    clock_secret: {
+        the_clock: 'The ancient clock mechanism was dismantled and studied by a team from Cambridge. They could not identify the metal, the symbols, or the power source. Their report concluded with a single line: "Origin unknown. Purpose unknown. Recommend further study." Further study proved impossible — the mechanism dissolved into dust within a month.',
+        the_loop: 'Neither broken nor eternal, the loop transformed into something new. Time continued forward, but sometimes — always at midnight, always in December — the rain would fall a little differently, and the old clock tower would hum with a frequency just below human hearing.',
+    },
+};
+
+// ── FEATURE 13: SUSPICION THRESHOLDS ──
+const suspicionConfig = {
+    examineNearNPC: 3,        // suspicion gained per examine near NPC
+    talkReduction: -2,        // suspicion reduced by talking
+    highThreshold: 10,        // NPC temporarily refuses to talk
+    alertOtherAmount: 2,      // suspicion added to nearby NPCs when one is alerted
+};
+
+// ── FEATURE 16: CRIME RECONSTRUCTION EVENTS ──
+const crimeReconstructionEvents = [
+    { id: 'step1', time: '11:00 PM', description: 'Lady Evelyn prepares the drugged brandy in the kitchen', icon: '🍷' },
+    { id: 'step2', time: '11:10 PM', description: 'Brandy delivered to Lord Ashworth in the Library', icon: '📚' },
+    { id: 'step3', time: '11:15 PM', description: 'Rex enters the secret passage from the Wine Cellar', icon: '🚪' },
+    { id: 'step4', time: '11:20 PM', description: 'Lord Ashworth becomes drowsy from the sedative', icon: '😴' },
+    { id: 'step5', time: '11:30 PM', description: 'Rex confronts Ashworth — struggle, cufflink torn', icon: '⚔️' },
+    { id: 'step6', time: '11:45 PM', description: 'Evelyn retrieves the vial — Blackwood witnesses her', icon: '👁️' },
+];
+
+// ── FEATURE 18: NPC GIFT DEFINITIONS ──
+const npcGifts = {
+    james_ashworth: {
+        item: 'brandy_sample',
+        trustBoost: 5,
+        message: 'James takes the brandy gratefully. "Finally, someone who understands." He warms to you considerably.',
+        unlocks: null,
+    },
+    lily_ashworth: {
+        item: 'pressed_flower',
+        trustBoost: 10,
+        message: 'Lily takes the photograph with trembling hands. "Where did you find this?" Her trust in you deepens significantly — she begins to share things she\'s been holding back.',
+        unlocks: 'lily_trusts_detective',
+    },
+    dr_cross: {
+        item: 'medical_report',
+        trustBoost: 5,
+        message: 'Dr. Cross examines the report with professional interest. "You\'ve done your homework, Detective. Perhaps I should be more forthcoming with you."',
+        unlocks: null,
+    },
+};
+
 // Public API
 return {
     locations, mapLayout, npcs, evidence, connections, deductions,
@@ -2597,6 +2924,9 @@ return {
     endings, narration, postMurderDescriptions, loopEvents,
     wrongAccusationDialogue, formatTime, getTimeOfDay,
     getTimePeriodName, validateAccusation,
+    dejaVuGreetings, npcAmbientLines, preGalaDescriptions,
+    scheduleOverrides, expandedEpilogues, suspicionConfig,
+    crimeReconstructionEvents, npcGifts,
 };
 
 })();

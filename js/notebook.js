@@ -25,6 +25,14 @@ const Notebook = (() => {
     let boardListenersAttached = false;
     let boardTooltip = null;
 
+    // Feature 15: Evidence combination state
+    let boardSelectedCards = [];
+    let boardCombineFlash = 0;
+    let boardCombineResult = null;
+
+    // Feature 21: Deduction string animation
+    let deductionAnimations = [];
+
     const CARD_W = 140;
     const CARD_H = 50;
     const CARD_RADIUS = 6;
@@ -113,6 +121,10 @@ const Notebook = (() => {
         }
     }
 
+    // ── Feature 33: Evidence Filter State ──
+    let clueFilter = 'all'; // 'all', 'documents', 'physical', 'records', 'structural', 'supernatural', 'key'
+    let clueSortBy = 'category'; // 'category', 'importance', 'loop'
+
     // ── Clues Tab ──
     function renderClues() {
         const container = document.getElementById('nb-clues');
@@ -123,28 +135,81 @@ const Notebook = (() => {
             return;
         }
 
-        const byCategory = Mystery.getEvidenceByCategory();
-        let html = '';
+        // Feature 33: Filter/sort controls
+        let html = '<div style="margin-bottom:12px;display:flex;gap:4px;flex-wrap:wrap">';
+        const filters = [
+            { key: 'all', label: 'All' },
+            { key: 'documents', label: '📄' },
+            { key: 'physical', label: '🔍' },
+            { key: 'records', label: '📋' },
+            { key: 'structural', label: '🏗️' },
+            { key: 'supernatural', label: '✨' },
+            { key: 'key', label: '🔑' },
+        ];
+        filters.forEach(f => {
+            const active = clueFilter === f.key;
+            html += `<button class="filter-btn${active ? ' active' : ''}" data-filter="${f.key}" style="padding:4px 8px;font-size:11px;background:${active ? 'rgba(212,160,32,0.2)' : 'rgba(0,0,0,0.3)'};border:1px solid ${active ? '#d4a020' : '#252540'};color:${active ? '#d4a020' : '#6a6a80'};cursor:pointer;border-radius:3px">${f.label}</button>`;
+        });
+        html += '<span style="margin-left:auto;font-size:10px;color:#6a6a80">Sort: </span>';
+        ['category', 'importance', 'loop'].forEach(s => {
+            const active = clueSortBy === s;
+            html += `<button class="sort-btn${active ? ' active' : ''}" data-sort="${s}" style="padding:3px 6px;font-size:10px;background:${active ? 'rgba(68,136,204,0.2)' : 'rgba(0,0,0,0.3)'};border:1px solid ${active ? '#4488cc' : '#252540'};color:${active ? '#4488cc' : '#6a6a80'};cursor:pointer;border-radius:3px">${s}</button>`;
+        });
+        html += '</div>';
 
         const categoryNames = {
-            documents: '\u{1F4C4} Documents',
-            physical: '\u{1F50D} Physical Evidence',
-            records: '\u{1F4CB} Records',
-            structural: '\u{1F3D7}\u{FE0F} Structural',
-            supernatural: '\u{2728} Supernatural',
-            key: '\u{1F511} Keys & Codes',
+            documents: '📄 Documents',
+            physical: '🔍 Physical Evidence',
+            records: '📋 Records',
+            structural: '🏗️ Structural',
+            supernatural: '✨ Supernatural',
+            key: '🔑 Keys & Codes',
         };
 
-        for (const [cat, items] of Object.entries(byCategory)) {
-            if (items.length === 0) continue;
-            html += `<h3 style="color:#d4a020;font-size:12px;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">${categoryNames[cat] || cat}</h3>`;
-            items.forEach(clue => {
+        let filteredClues = clueFilter === 'all' ? clues : clues.filter(c => c.category === clueFilter);
+
+        if (clueSortBy === 'importance') {
+            filteredClues = [...filteredClues].sort((a, b) => {
+                const evA = GameData.evidence[a.id];
+                const evB = GameData.evidence[b.id];
+                return (evB?.importance || 0) - (evA?.importance || 0);
+            });
+            filteredClues.forEach(clue => {
+                const ev = GameData.evidence[clue.id];
+                const imp = ev?.importance || 0;
+                const stars = '★'.repeat(imp) + '☆'.repeat(5 - imp);
                 html += `<div class="clue-item">
-                    <h4>${clue.name}</h4>
+                    <h4>${clue.name} <span style="color:#d4a020;font-size:10px">${stars}</span></h4>
                     <p>${clue.description}</p>
                     <div class="clue-location">Found in ${GameData.locations[clue.location]?.name || clue.location} — Loop ${clue.loop + 1}</div>
                 </div>`;
             });
+        } else if (clueSortBy === 'loop') {
+            filteredClues = [...filteredClues].sort((a, b) => b.loop - a.loop || b.time - a.time);
+            filteredClues.forEach(clue => {
+                html += `<div class="clue-item">
+                    <h4>${clue.name}</h4>
+                    <p>${clue.description}</p>
+                    <div class="clue-location">Found in ${GameData.locations[clue.location]?.name || clue.location} — Loop ${clue.loop + 1} at ${GameData.formatTime(clue.time)}</div>
+                </div>`;
+            });
+        } else {
+            const byCategory = {};
+            filteredClues.forEach(c => {
+                if (!byCategory[c.category]) byCategory[c.category] = [];
+                byCategory[c.category].push(c);
+            });
+            for (const [cat, items] of Object.entries(byCategory)) {
+                if (items.length === 0) continue;
+                html += `<h3 style="color:#d4a020;font-size:12px;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">${categoryNames[cat] || cat}</h3>`;
+                items.forEach(clue => {
+                    html += `<div class="clue-item">
+                        <h4>${clue.name}</h4>
+                        <p>${clue.description}</p>
+                        <div class="clue-location">Found in ${GameData.locations[clue.location]?.name || clue.location} — Loop ${clue.loop + 1}</div>
+                    </div>`;
+                });
+            }
         }
 
         // Progress
@@ -155,6 +220,20 @@ const Notebook = (() => {
         </div>`;
 
         container.innerHTML = html;
+
+        // Attach filter/sort button events
+        container.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                clueFilter = btn.dataset.filter;
+                renderClues();
+            });
+        });
+        container.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                clueSortBy = btn.dataset.sort;
+                renderClues();
+            });
+        });
     }
 
     // ── Profiles Tab ──
@@ -211,6 +290,30 @@ const Notebook = (() => {
 
             html += '</div>';
         });
+
+        // Feature 14: Alibi Tracker
+        if (Engine.state.loop >= 1) {
+            const alibis = Engine.getAlibiData();
+            html += `<div style="margin-top:20px;padding:12px;border-top:1px solid rgba(212,160,32,0.2)">
+                <div style="color:var(--amber);font-size:13px;margin-bottom:8px">Alibi Tracker</div>
+                <div style="font-size:10px;color:#6a6a80;margin-bottom:8px">Where each NPC claims to be at critical times</div>
+                <table style="width:100%;border-collapse:collapse;font-size:10px">
+                <tr style="color:#d4a020"><th style="text-align:left;padding:4px">NPC</th><th>11:00 PM</th><th>11:30 PM</th><th>Midnight</th></tr>`;
+            for (const [id, data] of Object.entries(alibis)) {
+                html += `<tr style="color:#8a8a9a;border-top:1px solid #1a1a30">
+                    <td style="padding:4px;color:#c8c8d4">${data.name}</td>`;
+                [1380, 1410, 1440].forEach(t => {
+                    const slot = data.times[t];
+                    const loc = slot ? slot.locationName : '?';
+                    // Highlight contradictions
+                    const suspicious = (id === 'lady_evelyn' && t === 1410 && Engine.state.knownFacts.has('blackwood_testimony')) ||
+                                     (id === 'rex_dalton' && t === 1410 && Engine.state.discoveredEvidence.has('muddy_footprints'));
+                    html += `<td style="padding:4px;text-align:center;${suspicious ? 'color:#cc3333;font-weight:bold' : ''}">${loc}</td>`;
+                });
+                html += '</tr>';
+            }
+            html += '</table></div>';
+        }
 
         container.innerHTML = html;
     }
@@ -371,6 +474,14 @@ const Notebook = (() => {
 
         // ── Mouse Up ──
         boardCanvas.addEventListener('mouseup', (e) => {
+            // Feature 15: Evidence combination on click (if not dragging)
+            if (!boardDragging || (boardDragNode && Math.abs(e.clientX - boardDragStart.x) < 5 && Math.abs(e.clientY - boardDragStart.y) < 5)) {
+                const bp = screenToBoard(e.clientX, e.clientY);
+                const card = hitTestCard(bp.x, bp.y);
+                if (card && !boardDragging) {
+                    handleBoardCardClick(card);
+                }
+            }
             boardDragging = false;
             boardDragNode = null;
             boardPanning = false;
@@ -690,6 +801,45 @@ const Notebook = (() => {
             drawPin(ctx, pos.x + CARD_W / 2, pos.y - 4, boardAnimTime, true);
         });
 
+        // Feature 21: Deduction string animation (red string drawing itself)
+        deductionAnimations = deductionAnimations.filter(anim => anim.progress < 1.5);
+        deductionAnimations.forEach(anim => {
+            const from = boardPositions[anim.from];
+            const to = boardPositions[anim.to];
+            if (!from || !to) return;
+            anim.progress += 0.02;
+
+            const fromCX = from.x + CARD_W / 2;
+            const fromCY = from.y + CARD_H / 2;
+            const toCX = to.x + CARD_W / 2;
+            const toCY = to.y + CARD_H / 2;
+
+            const drawProgress = Math.min(1, anim.progress);
+            const endX = fromCX + (toCX - fromCX) * drawProgress;
+            const endY = fromCY + (toCY - fromCY) * drawProgress;
+
+            // Glowing red string being drawn
+            const alpha = anim.progress > 1 ? Math.max(0, 1.5 - anim.progress) * 2 : 1;
+            ctx.strokeStyle = `rgba(255, 60, 60, ${alpha * 0.8})`;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#ff3333';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(fromCX, fromCY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            // Spark at the drawing tip
+            if (drawProgress < 1) {
+                ctx.fillStyle = `rgba(255, 200, 100, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+
         ctx.restore(); // pop zoom/pan transform
 
         // Draw zoom indicator
@@ -981,8 +1131,85 @@ const Notebook = (() => {
         );
     }
 
+    // ── Feature 15: Evidence Board Combination ──
+    function handleBoardCardClick(card) {
+        if (boardSelectedCards.length === 0) {
+            boardSelectedCards.push(card.id);
+            Engine.notify(`Selected: ${card.name}. Click another card to test connection.`);
+            // Feature 28: Cork pin sound
+            try { Audio.playSound('cork_pin'); } catch (e) {}
+        } else if (boardSelectedCards.length === 1) {
+            if (boardSelectedCards[0] === card.id) {
+                boardSelectedCards = [];
+                Engine.notify('Selection cleared.');
+                return;
+            }
+            const first = boardSelectedCards[0];
+            boardSelectedCards = [];
+            // Check if there's a connection
+            const conn = GameData.connections.find(c =>
+                (c.from === first && c.to === card.id) ||
+                (c.from === card.id && c.to === first)
+            );
+            if (conn) {
+                // Auto-discover connection if not already found
+                const exists = Engine.state.evidenceConnections.some(c =>
+                    (c.from === conn.from && c.to === conn.to));
+                if (!exists) {
+                    Engine.state.evidenceConnections.push(conn);
+                    // Trigger deduction animation
+                    deductionAnimations.push({ from: conn.from, to: conn.to, progress: 0 });
+                }
+                Engine.notify(`Connection found: ${conn.label}`);
+                // Feature 28: String stretch sound for connection
+                try { Audio.playSound('string_stretch'); } catch (e) {}
+                Audio.playSound('evidence');
+                // Check deductions
+                Engine.checkAchievements();
+            } else {
+                Engine.notify('No connection found between these pieces of evidence.');
+            }
+        }
+    }
+
+    // ── Feature 16: Crime Reconstruction Minigame ──
+    function renderReconstruction() {
+        if (Engine.state.loop < 4) {
+            return '<div class="nb-empty">Crime reconstruction requires loop 4+. Keep investigating.</div>';
+        }
+        const events = GameData.crimeReconstructionEvents;
+        if (!events) return '';
+
+        let html = `<div style="margin-top:16px;padding:12px;border-top:1px solid rgba(212,160,32,0.2)">
+            <div style="color:var(--amber);font-size:14px;margin-bottom:8px">Crime Reconstruction</div>
+            <div style="color:#6a6a80;font-size:11px;margin-bottom:12px">Arrange the events in chronological order to reconstruct the murder sequence.</div>`;
+
+        if (Engine.state.flags.reconstruction_solved) {
+            html += '<div style="color:#44aa66;font-size:12px;margin-bottom:8px">Reconstruction complete! The murder sequence has been verified.</div>';
+            events.forEach(e => {
+                html += `<div style="padding:6px 10px;margin-bottom:4px;background:rgba(68,170,102,0.1);border-left:3px solid #44aa66;font-size:11px">
+                    <span style="color:#d4a020">${e.icon} ${e.time}</span> — ${e.description}
+                </div>`;
+            });
+        } else {
+            // Shuffled events for the player to reorder
+            const shuffled = [...events].sort(() => Math.random() - 0.5);
+            html += '<div id="recon-events">';
+            shuffled.forEach((e, i) => {
+                html += `<div class="recon-event" draggable="true" data-id="${e.id}" style="padding:8px 10px;margin-bottom:4px;background:rgba(212,160,32,0.05);border:1px solid #252540;cursor:grab;font-size:11px;border-radius:3px">
+                    <span style="color:#d4a020">${e.icon}</span> ${e.description}
+                </div>`;
+            });
+            html += '</div>';
+            html += `<button id="check-recon-btn" class="action-btn" style="margin-top:8px">Check Order</button>`;
+        }
+        html += '</div>';
+        return html;
+    }
+
     return {
         init, open, close, renderCurrentTab,
         renderBoard, getUnlockedDeductions,
+        handleBoardCardClick, renderReconstruction,
     };
 })();

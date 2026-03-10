@@ -667,11 +667,165 @@ const Effects = (() => {
         }
     }
 
+    // ── Feature 19: Footstep Trail (garden → wine cellar after muddy_footprints) ──
+    let footstepTrailDots = [];
+    function initFootstepTrail() {
+        // Muddy footprints leading from garden center toward wine cellar entrance
+        footstepTrailDots = [];
+        const steps = 12;
+        for (let i = 0; i < steps; i++) {
+            const t = i / (steps - 1);
+            footstepTrailDots.push({
+                x: 0.35 + t * 0.35,   // left-to-right across garden
+                y: 0.72 - t * 0.15 + Math.sin(i * 1.2) * 0.02, // slight wobble
+                size: 4 + Math.random() * 2,
+                opacity: 0.15 + Math.random() * 0.1,
+                rotation: (i % 2 === 0 ? -0.2 : 0.2) + Math.random() * 0.1,
+            });
+        }
+    }
+
+    function renderFootstepTrail(ctx, w, h, locationId) {
+        if (locationId !== 'garden') return;
+        try {
+            if (!Engine.state.discoveredEvidence.has('muddy_footprints')) return;
+        } catch (e) { return; }
+
+        if (footstepTrailDots.length === 0) initFootstepTrail();
+
+        footstepTrailDots.forEach(dot => {
+            const dx = dot.x * w;
+            const dy = dot.y * h;
+            ctx.save();
+            ctx.translate(dx, dy);
+            ctx.rotate(dot.rotation);
+            ctx.fillStyle = `rgba(80, 60, 30, ${dot.opacity})`;
+            // Boot-shaped print
+            ctx.beginPath();
+            ctx.ellipse(0, 0, dot.size * 0.6, dot.size, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Heel
+            ctx.beginPath();
+            ctx.ellipse(0, dot.size * 1.3, dot.size * 0.45, dot.size * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+    }
+
+    // ── Feature 23: NPC Idle Animations ──
+    let npcIdlePhases = {};
+    function getNPCIdleOffset(npcId, time) {
+        if (!npcIdlePhases[npcId]) {
+            npcIdlePhases[npcId] = Math.random() * Math.PI * 2;
+        }
+        const phase = npcIdlePhases[npcId] + time;
+        const idle = {
+            lord_ashworth: { dx: 0, dy: Math.sin(phase * 0.5) * 1.5 },  // slight sway
+            lady_evelyn:   { dx: Math.sin(phase * 0.7) * 1, dy: 0 },    // adjusting posture
+            james:         { dx: Math.sin(phase * 1.2) * 2, dy: 0 },    // swirling drink
+            lily:          { dx: 0, dy: Math.sin(phase * 1.5) * 1.5 },  // page turning bob
+            dr_cross:      { dx: 0, dy: Math.sin(phase * 0.4) * 1 },    // standing still mostly
+            rex_dalton:    { dx: Math.sin(phase * 0.9) * 1.5, dy: 0 },  // restless shifting
+            isabelle:      { dx: 0, dy: Math.sin(phase * 0.6) * 1 },    // subtle movement
+            thomas:        { dx: 0, dy: Math.sin(phase * 0.3) * 0.8 },  // clasping hands gently
+            mrs_blackwood: { dx: Math.sin(phase * 0.5) * 0.5, dy: 0 },  // standing firm
+            finch:         { dx: Math.sin(phase * 0.8) * 1, dy: 0 },    // busy movement
+        };
+        return idle[npcId] || { dx: 0, dy: 0 };
+    }
+
+    // ── Feature 26: Enhanced Room Weather ──
+    let condensationDrops = [];
+    const MAX_CONDENSATION = 20;
+
+    function initCondensation() {
+        condensationDrops = [];
+        for (let i = 0; i < MAX_CONDENSATION; i++) {
+            condensationDrops.push({
+                x: 0.6 + Math.random() * 0.3,  // right side where window is
+                y: 0.1 + Math.random() * 0.4,
+                speed: 0.0001 + Math.random() * 0.0003,
+                size: 1 + Math.random() * 2,
+                opacity: 0.02 + Math.random() * 0.04,
+            });
+        }
+    }
+
+    function updateCondensation(dt) {
+        if (condensationDrops.length === 0) initCondensation();
+        condensationDrops.forEach(d => {
+            d.y += d.speed;
+            if (d.y > 0.5) {
+                d.y = 0.1 + Math.random() * 0.1;
+                d.x = 0.6 + Math.random() * 0.3;
+            }
+        });
+    }
+
+    function renderCondensation(ctx, w, h, locationId) {
+        // Indoor rooms only, not garden/cellar/tower
+        const indoorRooms = ['your_room', 'grand_hallway', 'dining_room', 'library',
+                             'study', 'drawing_room', 'ballroom', 'master_suite', 'kitchen'];
+        if (!indoorRooms.includes(locationId)) return;
+
+        condensationDrops.forEach(d => {
+            const cx = d.x * w;
+            const cy = d.y * h;
+            ctx.fillStyle = `rgba(180, 200, 220, ${d.opacity})`;
+            ctx.beginPath();
+            ctx.arc(cx, cy, d.size, 0, Math.PI * 2);
+            ctx.fill();
+            // Small drip trail
+            ctx.strokeStyle = `rgba(180, 200, 220, ${d.opacity * 0.5})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx, cy + d.size * 3);
+            ctx.stroke();
+        });
+    }
+
+    // Override renderAllWithGhost to include new features
+    const _origRenderAllWithGhost = renderAllWithGhost;
+    function renderAllFinal(ctx, w, h, gameTime, locationId, brightness, time) {
+        const dt = 0.016;
+        update(gameTime, dt);
+        updateGhost(gameTime, dt);
+        updateRainStreaks(dt);
+        updateThunder(dt, gameTime);
+        updateFlicker(dt, gameTime);
+        updateFogDensity(dt, gameTime, locationId);
+        updateCondensation(dt);
+
+        if (Math.abs(shakeX) > 0.1 || Math.abs(shakeY) > 0.1) {
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+        }
+
+        renderDustMotes(ctx, w, h, brightness);
+        renderMoonbeams(ctx, w, h, gameTime, locationId);
+        renderCandleGlow(ctx, w, h, locationId);
+        renderWindowRainStreaks(ctx, w, h, locationId);
+        renderBreathFog(ctx, w, h, locationId, time);
+        renderFogDensity(ctx, w, h);
+        renderFootstepTrail(ctx, w, h, locationId);
+        renderCondensation(ctx, w, h, locationId);
+        renderGhost(ctx, w, h);
+        renderFlickerOverlay(ctx, w, h, locationId);
+        renderThunderFlash(ctx, w, h);
+        renderTensionOverlay(ctx, w, h);
+        renderPostMurderEffect(ctx, w, h);
+
+        if (Math.abs(shakeX) > 0.1 || Math.abs(shakeY) > 0.1) {
+            ctx.restore();
+        }
+    }
+
     return {
-        init, update, renderAll: renderAllWithGhost,
+        init, update, renderAll: renderAllFinal,
         getWindOffset, getRainIntensity,
         getCurtainSway, getCandleBrightness,
         getScreenShake, getTension, isPostMurder,
-        getWarningMessage,
+        getWarningMessage, getNPCIdleOffset,
     };
 })();

@@ -328,6 +328,12 @@ const Inventory = (() => {
         ctx.fillText('Press I or ESC to close', w / 2, py + panelH - 10);
     }
 
+    // ── Feature 18: Remove item (for gift system) ──
+    function removeItem(id) {
+        items.delete(id);
+        if (selectedItem === id) selectedItem = null;
+    }
+
     // ── Getters / Setters ──
     function hasItem(id) { return items.has(id); }
     function getItems() { return [...items]; }
@@ -353,7 +359,7 @@ const Inventory = (() => {
 
     return {
         init, reset, pickupItem, checkForItems,
-        useItemOn, tryCombine,
+        useItemOn, tryCombine, removeItem,
         renderInventoryBar, renderInventoryPanel,
         hasItem, getItems, getSelectedItem,
         selectItem, deselectItem,

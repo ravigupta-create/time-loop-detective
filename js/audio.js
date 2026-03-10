@@ -1656,10 +1656,276 @@ const Audio = (() => {
         if (musicGain) musicGain.gain.value = Math.max(0, Math.min(0.5, v * 0.5));
     }
 
+    // ── Feature 27: NPC Dialogue Motifs ──
+    // Each NPC gets a unique 2-3 note musical motif
+    const NPC_MOTIFS = {
+        lord_ashworth:  { notes: [196.00, 261.63, 220.00], type: 'sine',     vol: 0.06 }, // G3 C4 A3 — noble, descending
+        lady_evelyn:    { notes: [329.63, 293.66],          type: 'sine',     vol: 0.05 }, // E4 D4 — descending minor third
+        james:          { notes: [220.00, 293.66, 261.63],  type: 'triangle', vol: 0.05 }, // A3 D4 C4 — uncertain
+        lily:           { notes: [392.00, 349.23, 392.00],  type: 'sine',     vol: 0.04 }, // G4 F4 G4 — gentle, hopeful
+        dr_cross:       { notes: [261.63, 246.94],          type: 'sine',     vol: 0.05 }, // C4 B3 — clinical half-step
+        rex_dalton:     { notes: [311.13, 466.16],          type: 'triangle', vol: 0.05 }, // Eb4 Bb4 — staccato tritone
+        isabelle:       { notes: [329.63, 392.00, 349.23],  type: 'sine',     vol: 0.04 }, // E4 G4 F4 — mysterious
+        thomas:         { notes: [196.00, 293.66],          type: 'sine',     vol: 0.04 }, // G3 D4 — gentle fifth
+        mrs_blackwood:  { notes: [261.63, 220.00, 196.00],  type: 'triangle', vol: 0.04 }, // C4 A3 G3 — stern descent
+        finch:          { notes: [349.23, 329.63],          type: 'sine',     vol: 0.03 }, // F4 E4 — quiet half-step
+    };
+
+    function playNPCMotif(npcId) {
+        if (!initialized || !enabled) return;
+        resume();
+        const motif = NPC_MOTIFS[npcId];
+        if (!motif) return;
+
+        motif.notes.forEach((freq, i) => {
+            const startTime = ctx.currentTime + i * 0.2;
+            const osc = ctx.createOscillator();
+            osc.type = motif.type;
+            osc.frequency.value = freq;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(motif.vol, startTime + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+            osc.connect(gain);
+            gain.connect(sfxGain);
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+        });
+    }
+
+    // ── Feature 28: Evidence Board Sounds ──
+    function playCorkPin() {
+        if (!initialized || !enabled) return;
+        resume();
+        // Short thud + high click
+        const noise = ctx.createBufferSource();
+        noise.buffer = createNoiseBuffer(0.08, 'brown');
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 400;
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(sfxGain);
+        noise.start();
+        noise.stop(ctx.currentTime + 0.08);
+        // Pin click
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 2000;
+        const clickGain = ctx.createGain();
+        clickGain.gain.setValueAtTime(0.05, ctx.currentTime + 0.02);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+        osc.connect(clickGain);
+        clickGain.connect(sfxGain);
+        osc.start(ctx.currentTime + 0.02);
+        osc.stop(ctx.currentTime + 0.07);
+    }
+
+    function playStringStretch() {
+        if (!initialized || !enabled) return;
+        resume();
+        // Rising filtered noise to simulate string being pulled taut
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(300, ctx.currentTime + 0.3);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 500;
+        filter.Q.value = 5;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.02, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(sfxGain);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+    }
+
+    function playCardHover() {
+        if (!initialized || !enabled) return;
+        resume();
+        // Very soft paper rustle
+        const noise = ctx.createBufferSource();
+        noise.buffer = createNoiseBuffer(0.06, 'white');
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 4000;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.02, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(sfxGain);
+        noise.start();
+        noise.stop(ctx.currentTime + 0.06);
+    }
+
+    // ── Feature 29: Accusation Drumroll ──
+    let drumrollInterval = null;
+    function startDrumroll() {
+        if (!initialized || !enabled) return;
+        resume();
+        let tempo = 200;
+        let vol = 0.03;
+        drumrollInterval = setInterval(() => {
+            if (!initialized) return;
+            // Snare-like hit
+            const noise = ctx.createBufferSource();
+            noise.buffer = createNoiseBuffer(0.05, 'white');
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(vol, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 1500;
+            filter.Q.value = 2;
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(sfxGain);
+            noise.start();
+            noise.stop(ctx.currentTime + 0.05);
+            // Accelerate and crescendo
+            vol = Math.min(0.12, vol + 0.003);
+            tempo = Math.max(40, tempo - 5);
+        }, tempo);
+    }
+
+    function stopDrumroll() {
+        if (drumrollInterval !== null) {
+            clearInterval(drumrollInterval);
+            drumrollInterval = null;
+        }
+    }
+
+    // ── Feature 30: Ambient NPC Sounds ──
+    const NPC_AMBIENT_SOUNDS = {
+        james:         { freq: 2500, type: 'sine', interval: 4000, desc: 'ice clinking' },
+        lily:          { freq: 3500, type: 'sine', interval: 5000, desc: 'page turning' },
+        thomas:        { freq: 150,  type: 'sine', interval: 6000, desc: 'prayer murmur' },
+        rex_dalton:    { freq: 1800, type: 'sine', interval: 7000, desc: 'lighter flick' },
+        mrs_blackwood: { freq: 800,  type: 'sine', interval: 8000, desc: 'keys jingling' },
+    };
+    let npcAmbientTimers = {};
+
+    function startNPCAmbientSound(npcId) {
+        if (!initialized || !enabled) return;
+        if (npcAmbientTimers[npcId]) return;
+        const config = NPC_AMBIENT_SOUNDS[npcId];
+        if (!config) return;
+
+        const play = () => {
+            if (!npcAmbientTimers[npcId]) return;
+            resume();
+            if (npcId === 'james') {
+                // Ice clinking — high frequency short burst
+                const osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = 2500 + Math.random() * 500;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.02, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(ambienceGain);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.12);
+            } else if (npcId === 'lily') {
+                // Page turning — filtered noise
+                const noise = ctx.createBufferSource();
+                noise.buffer = createNoiseBuffer(0.1, 'white');
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 3000;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.015, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ambienceGain);
+                noise.start();
+                noise.stop(ctx.currentTime + 0.1);
+            } else if (npcId === 'thomas') {
+                // Prayer murmur — low bandpass noise
+                const noise = ctx.createBufferSource();
+                noise.buffer = createNoiseBuffer(0.4, 'brown');
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 200;
+                filter.Q.value = 3;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ambienceGain);
+                noise.start();
+                noise.stop(ctx.currentTime + 0.4);
+            } else if (npcId === 'rex_dalton') {
+                // Lighter flick — sharp click
+                const osc = ctx.createOscillator();
+                osc.frequency.value = 1800;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.03, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+                osc.connect(gain);
+                gain.connect(ambienceGain);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.03);
+            } else if (npcId === 'mrs_blackwood') {
+                // Keys jingling — multiple high tones
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        if (!initialized) return;
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.value = 3000 + Math.random() * 1500;
+                        const gain = ctx.createGain();
+                        gain.gain.setValueAtTime(0.01, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+                        osc.connect(gain);
+                        gain.connect(ambienceGain);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.06);
+                    }, i * 50);
+                }
+            }
+            npcAmbientTimers[npcId] = setTimeout(play, config.interval + Math.random() * 3000);
+        };
+        npcAmbientTimers[npcId] = setTimeout(play, 1000 + Math.random() * 2000);
+    }
+
+    function stopNPCAmbientSounds() {
+        Object.keys(npcAmbientTimers).forEach(id => {
+            clearTimeout(npcAmbientTimers[id]);
+        });
+        npcAmbientTimers = {};
+    }
+
+    // Add new sounds to playSound switch
+    const _origPlaySound = playSound;
+    function enhancedPlaySound(type) {
+        switch (type) {
+            case 'cork_pin': playCorkPin(); return;
+            case 'string_stretch': playStringStretch(); return;
+            case 'card_hover': playCardHover(); return;
+            case 'drumroll_start': startDrumroll(); return;
+            case 'drumroll_stop': stopDrumroll(); return;
+            default: _origPlaySound(type);
+        }
+    }
+
     return {
         init, resume, startAmbience, stopAmbience,
-        playSound, toggle, startMusic, stopMusic, updateMusicTension,
+        playSound: enhancedPlaySound, toggle, startMusic, stopMusic, updateMusicTension,
         setMasterVolume, setMusicVolume,
+        playNPCMotif, playCorkPin, playStringStretch, playCardHover,
+        startDrumroll, stopDrumroll,
+        startNPCAmbientSound, stopNPCAmbientSounds,
         get enabled() { return enabled; },
     };
 })();

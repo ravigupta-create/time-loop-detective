@@ -30,6 +30,9 @@ const Dialogue = (() => {
         Engine.state.screen = 'dialogue';
         World.showScreen('dialogue-screen');
 
+        // Feature 27: Play NPC dialogue motif
+        try { Audio.playNPCMotif(npcId); } catch (e) {}
+
         // Draw portrait
         const portraitCanvas = document.getElementById('dialogue-portrait');
         Renderer.drawPortraitOnCanvas(npcId, portraitCanvas);
@@ -124,11 +127,23 @@ const Dialogue = (() => {
             node.flags.forEach(flag => Engine.setFlag(flag));
         }
 
+        // Process evidence discovery from dialogue (Feature 1)
+        if (node.evidence) {
+            Engine.discoverEvidence(node.evidence);
+        }
+
         // Use time-of-day greeting text if this is the greeting node
         let displayText = node.text;
         if (nodeId === 'greeting') {
-            const timeGreeting = getTimeGreeting(currentNPC);
-            if (timeGreeting) displayText = timeGreeting;
+            // Feature 5: Deja vu greetings in loop 3+
+            const dejaVu = GameData.dejaVuGreetings?.[currentNPC];
+            if (dejaVu && Engine.state.loop >= 3 && !Engine.state.flags['dejavu_' + currentNPC + '_' + Engine.state.loop]) {
+                Engine.state.flags['dejavu_' + currentNPC + '_' + Engine.state.loop] = true;
+                displayText = dejaVu;
+            } else {
+                const timeGreeting = getTimeGreeting(currentNPC);
+                if (timeGreeting) displayText = timeGreeting;
+            }
         }
 
         // Typewriter effect for text

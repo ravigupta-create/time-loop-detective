@@ -850,10 +850,302 @@ const Renderer = (() => {
         }
     }
 
+    // ── Feature 20: Evidence Discovery Animation ──
+    let evidenceSparkles = [];
+    let evidenceFloatTexts = [];
+
+    function triggerEvidenceAnimation(evidenceName) {
+        // Golden sparkle burst
+        for (let i = 0; i < 20; i++) {
+            const angle = (Math.PI * 2 * i) / 20;
+            const speed = 1.5 + Math.random() * 2;
+            evidenceSparkles.push({
+                x: width / 2 + (Math.random() - 0.5) * 60,
+                y: height / 2 + (Math.random() - 0.5) * 40,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1,
+                life: 1,
+                decay: 0.015 + Math.random() * 0.01,
+                size: 2 + Math.random() * 3,
+            });
+        }
+        // Floating text
+        evidenceFloatTexts.push({
+            text: evidenceName || 'Evidence Found',
+            x: width / 2,
+            y: height * 0.4,
+            life: 1,
+            decay: 0.008,
+        });
+    }
+
+    function updateAndRenderEvidenceAnimation() {
+        // Sparkles
+        evidenceSparkles = evidenceSparkles.filter(s => s.life > 0);
+        evidenceSparkles.forEach(s => {
+            s.x += s.vx;
+            s.y += s.vy;
+            s.vy += 0.05; // gravity
+            s.life -= s.decay;
+            const alpha = s.life * 0.8;
+            ctx.fillStyle = `rgba(212, 160, 32, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size * s.life, 0, Math.PI * 2);
+            ctx.fill();
+            // Glow
+            ctx.fillStyle = `rgba(255, 220, 100, ${alpha * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size * s.life * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Float texts
+        evidenceFloatTexts = evidenceFloatTexts.filter(t => t.life > 0);
+        evidenceFloatTexts.forEach(t => {
+            t.y -= 0.5;
+            t.life -= t.decay;
+            ctx.save();
+            ctx.font = 'bold 16px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(212, 160, 32, ${t.life})`;
+            ctx.fillText(t.text, t.x, t.y);
+            ctx.restore();
+        });
+    }
+
+    // ── Feature 22: Minimap Room Labels ──
+    let minimapHoverLabel = null;
+
+    function checkMinimapHover(mouseX, mouseY) {
+        const mw = 130, mh = 100;
+        const mx = width - mw - 16;
+        const my = height - mh - 80;
+
+        minimapHoverLabel = null;
+        for (const [locId, pos] of Object.entries(GameData.mapLayout)) {
+            const px = mx + pos.x * mw;
+            const py = my + pos.y * mh;
+            const dist = Math.hypot(mouseX - px, mouseY - py);
+            if (dist < 10) {
+                const loc = GameData.locations[locId];
+                if (loc) {
+                    minimapHoverLabel = { name: loc.name, x: px, y: py - 12 };
+                }
+                break;
+            }
+        }
+    }
+
+    function renderMinimapLabel() {
+        if (!minimapHoverLabel) return;
+        ctx.save();
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        const tw = ctx.measureText(minimapHoverLabel.name).width + 8;
+        ctx.fillStyle = 'rgba(7, 7, 15, 0.85)';
+        ctx.fillRect(minimapHoverLabel.x - tw / 2, minimapHoverLabel.y - 10, tw, 14);
+        ctx.strokeStyle = 'rgba(212, 160, 32, 0.4)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(minimapHoverLabel.x - tw / 2, minimapHoverLabel.y - 10, tw, 14);
+        ctx.fillStyle = '#d4a020';
+        ctx.fillText(minimapHoverLabel.name, minimapHoverLabel.x, minimapHoverLabel.y);
+        ctx.restore();
+    }
+
+    // ── Feature 24: Analog Clock Face in HUD ──
+    function renderAnalogClock(gameTime) {
+        const clockSize = 20;
+        const cx = width - 50;
+        const cy = 22;
+
+        // Background
+        ctx.fillStyle = 'rgba(7, 7, 15, 0.7)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, clockSize + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Clock face
+        const isLate = gameTime >= 1380; // after 11 PM
+        ctx.strokeStyle = isLate ? 'rgba(200, 50, 50, 0.6)' : 'rgba(212, 160, 32, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, clockSize, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Hour marks
+        for (let i = 0; i < 12; i++) {
+            const angle = (i * Math.PI * 2) / 12 - Math.PI / 2;
+            const inner = clockSize * 0.8;
+            const outer = clockSize * 0.95;
+            ctx.strokeStyle = isLate ? 'rgba(200, 50, 50, 0.4)' : 'rgba(212, 160, 32, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+            ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
+            ctx.stroke();
+        }
+
+        // Convert game time (minutes from midnight) to 12-hour angle
+        const hours = Math.floor(gameTime / 60) % 12;
+        const minutes = gameTime % 60;
+
+        // Hour hand
+        const hourAngle = ((hours + minutes / 60) * Math.PI * 2) / 12 - Math.PI / 2;
+        ctx.strokeStyle = isLate ? '#cc3333' : '#d4a020';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(hourAngle) * clockSize * 0.5, cy + Math.sin(hourAngle) * clockSize * 0.5);
+        ctx.stroke();
+
+        // Minute hand
+        const minAngle = (minutes * Math.PI * 2) / 60 - Math.PI / 2;
+        ctx.strokeStyle = isLate ? '#cc3333' : '#d4a020';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(minAngle) * clockSize * 0.75, cy + Math.sin(minAngle) * clockSize * 0.75);
+        ctx.stroke();
+
+        // Center dot
+        ctx.fillStyle = isLate ? '#cc3333' : '#d4a020';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Red glow after 11 PM
+        if (isLate) {
+            const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, clockSize + 8);
+            glow.addColorStop(0, 'rgba(200, 50, 50, 0.08)');
+            glow.addColorStop(1, 'rgba(200, 50, 50, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(cx, cy, clockSize + 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // ── Feature 25: Accusation Reveal Effect ──
+    let accusationRevealActive = false;
+    let accusationRevealPhase = 0;
+
+    function triggerAccusationReveal() {
+        accusationRevealActive = true;
+        accusationRevealPhase = 0;
+        Audio.playSound('thunder');
+    }
+
+    function updateAccusationReveal() {
+        if (!accusationRevealActive) return;
+        accusationRevealPhase += 0.02;
+
+        // Flash
+        if (accusationRevealPhase < 0.3) {
+            const flash = 1 - accusationRevealPhase / 0.3;
+            ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.5})`;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        // Vignette zoom
+        if (accusationRevealPhase < 1) {
+            const zoom = accusationRevealPhase;
+            const vigGrad = ctx.createRadialGradient(
+                width / 2, height / 2, width * 0.1 * (1 - zoom),
+                width / 2, height / 2, width * 0.5
+            );
+            vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            vigGrad.addColorStop(1, `rgba(0, 0, 0, ${zoom * 0.6})`);
+            ctx.fillStyle = vigGrad;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        if (accusationRevealPhase >= 1.5) {
+            accusationRevealActive = false;
+        }
+    }
+
+    // ── Feature 31: Autosave Indicator ──
+    let autosaveFlash = 0;
+
+    function triggerAutosaveIndicator() {
+        autosaveFlash = 1;
+    }
+
+    function renderAutosaveIndicator() {
+        if (autosaveFlash <= 0) return;
+        autosaveFlash -= 0.01;
+
+        const alpha = Math.min(1, autosaveFlash);
+        const x = 16, y = 22;
+
+        // Floppy disk icon
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#d4a020';
+        ctx.fillRect(x, y, 14, 16);
+        ctx.fillStyle = '#0d0d1a';
+        ctx.fillRect(x + 3, y, 8, 6);
+        ctx.fillRect(x + 2, y + 9, 10, 5);
+        ctx.fillStyle = '#d4a020';
+        ctx.fillRect(x + 5, y + 10, 4, 4);
+        // "Saved" text
+        ctx.font = '9px monospace';
+        ctx.fillStyle = `rgba(212, 160, 32, ${alpha})`;
+        ctx.fillText('Saved', x + 18, y + 12);
+        ctx.restore();
+    }
+
+    // ── Hook mouse move for minimap labels ──
+    function setupMouseHover() {
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            checkMinimapHover(mx, my);
+        });
+    }
+
+    // Patch init to add hover listener
+    const _origInit = init;
+    function enhancedInit() {
+        _origInit();
+        setupMouseHover();
+    }
+
+    // Patch renderRoom to include new features
+    const _origRenderRoom = renderRoom;
+    function enhancedRenderRoom() {
+        _origRenderRoom();
+        // Additional overlays
+        updateAndRenderEvidenceAnimation();
+        renderAnalogClock(Engine.state.time);
+        renderMinimapLabel();
+        updateAccusationReveal();
+        renderAutosaveIndicator();
+    }
+
     return {
-        init, startLoop, stopLoop, render,
+        init: enhancedInit, startLoop, stopLoop,
+        render() {
+            const screen = Engine.state.screen;
+            if (screen === 'title' || screen === 'intro') {
+                Cutscenes.renderTitleScene(ctx, width, height);
+            } else if (screen === 'ending') {
+                Cutscenes.renderEndingScene(ctx, width, height, Engine.state.endingKey || 'default', time);
+            } else if (screen === 'minigame') {
+                enhancedRenderRoom();
+                MiniGames.updateAndRender(ctx, width, height, 0.016);
+            } else if (screen === 'playing' || screen === 'dialogue' ||
+                       screen === 'notebook' || screen === 'accusation' ||
+                       screen === 'fast_forward' || screen === 'eavesdrop') {
+                enhancedRenderRoom();
+            }
+        },
         drawPortraitOnCanvas, renderMinimap,
         adjustColor,
         startRoomTransition, isTransitioning,
+        triggerEvidenceAnimation,
+        triggerAccusationReveal,
+        triggerAutosaveIndicator,
     };
 })();

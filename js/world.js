@@ -27,11 +27,14 @@ const World = (() => {
         const isPostMurder = Engine.isPostMurder();
         const postMurderDesc = isPostMurder && GameData.postMurderDescriptions?.[locationId];
 
+        // Feature 9: Pre-gala ballroom description (before 7 PM)
+        const preGalaDesc = !isPostMurder && Engine.state.time < 1140 && GameData.preGalaDescriptions?.[locationId];
+
         const rawTod = GameData.getTimeOfDay(Engine.state.time);
         // Map detailed time periods to description keys (fallback for late_morning, late_afternoon, late_night)
         const todMap = { late_morning: 'morning', late_afternoon: 'afternoon', late_night: 'night' };
         const tod = todMap[rawTod] || rawTod;
-        const desc = postMurderDesc || loc.descriptions?.[tod] || loc.description;
+        const desc = postMurderDesc || preGalaDesc || loc.descriptions?.[tod] || loc.description;
         const descEl = document.getElementById('room-description');
         descEl.textContent = desc;
         descEl.classList.add('fade-in');
@@ -54,11 +57,33 @@ const World = (() => {
             narEl.textContent = lines[Math.floor(Math.random() * lines.length)];
         }
 
+        // Feature 8: Show ambient NPC line when entering a room with NPCs
+        const npcsHere = Engine.getNPCsAtLocation(locationId, Engine.state.time);
+        if (npcsHere.length > 0 && Math.random() < 0.4) {
+            const randomNPC = npcsHere[Math.floor(Math.random() * npcsHere.length)];
+            const lines = GameData.npcAmbientLines?.[randomNPC.id];
+            if (lines && lines.length > 0) {
+                const line = lines[Math.floor(Math.random() * lines.length)];
+                setTimeout(() => {
+                    const narEl = document.getElementById('room-narration');
+                    if (narEl) narEl.textContent = line;
+                }, 2000);
+            }
+        }
+
         // Build actions
         buildRoomActions(locationId);
 
         // Start ambience
         Audio.startAmbience(loc.ambience || 'rain');
+
+        // Feature 30: Ambient NPC sounds for NPCs in this room
+        try {
+            Audio.stopNPCAmbientSounds();
+            if (npcsHere.length > 0) {
+                npcsHere.forEach(npc => Audio.startNPCAmbientSound(npc.id));
+            }
+        } catch (e) {}
 
         // Start background music — quiet theme for tower/wine_cellar, default investigation
         if (locationId === 'tower' || locationId === 'wine_cellar') {

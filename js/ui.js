@@ -56,6 +56,7 @@ const UI = (() => {
         document.getElementById('btn-fast-forward').addEventListener('click', showFastForward);
         document.getElementById('btn-accuse').addEventListener('click', showAccusation);
         document.getElementById('btn-mute').addEventListener('click', toggleSound);
+        document.getElementById('btn-surrender').addEventListener('click', showSurrender);
 
         // Help
         document.getElementById('help-close').addEventListener('click', hideHelp);
@@ -195,6 +196,12 @@ const UI = (() => {
         } else {
             fill.style.background = 'linear-gradient(90deg, #8b6914, #d4a020)';
         }
+
+        // Feature 3: Show surrender button in loop 3+
+        const surrenderBtn = document.getElementById('btn-surrender');
+        if (surrenderBtn) {
+            surrenderBtn.style.display = Engine.state.loop >= 3 ? '' : 'none';
+        }
     }
 
     // ── Notebook Toggle ──
@@ -263,6 +270,9 @@ const UI = (() => {
             }
             container.appendChild(btn);
         });
+
+        // Feature 17: Add eavesdrop quick-travel shortcuts
+        addEavesdropShortcuts(container);
     }
 
     function hideFastForward() {
@@ -279,12 +289,17 @@ const UI = (() => {
         document.getElementById('accusation-screen').classList.add('active');
         Audio.playSound('accusation');
 
+        // Feature 29: Start drumroll
+        try { Audio.startDrumroll(); } catch (e) {}
+
         buildAccusationUI();
     }
 
     function hideAccusation() {
         Engine.state.screen = 'playing';
         document.getElementById('accusation-screen').classList.remove('active');
+        // Feature 29: Stop drumroll
+        try { Audio.stopDrumroll(); } catch (e) {}
     }
 
     function buildAccusationUI() {
@@ -369,8 +384,11 @@ const UI = (() => {
             return;
         }
 
+        // Feature 25: Accusation reveal effect
+        try { Renderer.triggerAccusationReveal(); } catch (e) {}
+
         // Show ending
-        showEnding(endingKey, ending);
+        setTimeout(() => showEnding(endingKey, ending), 800);
     }
 
     // ── Endings ──
@@ -446,6 +464,14 @@ const UI = (() => {
     }
 
     function getEpilogues(endingKey) {
+        // Feature 12: Use expanded epilogues if available
+        const expanded = GameData.expandedEpilogues?.[endingKey];
+        if (expanded) {
+            return Object.entries(expanded).map(([key, text]) => {
+                const name = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                return `<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;line-height:1.4"><strong style="color:var(--amber)">${name}</strong> — ${text}</div>`;
+            }).join('');
+        }
         const chars = {
             true_justice: [
                 '<strong>Lady Evelyn</strong> — Arrested and tried. Sentenced to life imprisonment.',
@@ -620,6 +646,15 @@ const UI = (() => {
         const hint = Mystery.getHint();
         hintEl.innerHTML = `<strong style="color:var(--blue-accent)">Hint:</strong> ${hint}`;
 
+        // Feature 32: Per-loop statistics
+        const statsEl = document.getElementById('loop-recap-stats');
+        if (statsEl) {
+            statsEl.innerHTML = getLoopStatsHTML();
+        } else {
+            // Inject stats after hint
+            hintEl.insertAdjacentHTML('afterend', `<div id="loop-recap-stats">${getLoopStatsHTML()}</div>`);
+        }
+
         // Begin Loop button
         document.getElementById('btn-begin-loop').onclick = () => {
             screen.classList.remove('active');
@@ -770,6 +805,118 @@ const UI = (() => {
         }
     }
 
+    // ── FEATURE 3: Surrender Ending Trigger ──
+    function showSurrender() {
+        if (Engine.state.screen !== 'playing') return;
+        if (Engine.state.loop < 3) return;
+        const ending = GameData.endings.surrender;
+        if (!ending) return;
+        showEnding('surrender', ending);
+    }
+
+    // ── FEATURE 17: Quick Eavesdrop Travel ──
+    function addEavesdropShortcuts(container) {
+        if (Engine.state.eavesdropsWitnessed.size === 0) return;
+        const upcoming = GameData.eavesdrops.filter(e => {
+            if (e.requiresLoop && Engine.state.loop < e.requiresLoop) return false;
+            if (Engine.state.eavesdropsWitnessed.has(e.id)) return true; // known from prior loop
+            return false;
+        }).filter(e => e.time > Engine.state.time);
+
+        if (upcoming.length === 0) return;
+
+        const header = document.createElement('div');
+        header.style.cssText = 'color:#d4a020;font-size:11px;margin-top:16px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px';
+        header.textContent = 'Known Eavesdrop Opportunities';
+        container.appendChild(header);
+
+        upcoming.forEach(e => {
+            const btn = document.createElement('button');
+            btn.className = 'ff-btn';
+            btn.innerHTML = `<span style="color:#d4a020">${GameData.formatTime(e.time)}</span> — ${e.speakers}<br><span style="font-size:10px;color:#6a6a80">${GameData.locations[e.location]?.name || e.location}</span>`;
+            btn.style.textAlign = 'left';
+            btn.style.fontSize = '11px';
+            btn.addEventListener('click', () => {
+                hideFastForward();
+                const advance = e.time - Engine.state.time;
+                if (advance > 0) {
+                    Engine.advanceTime(advance);
+                    Engine.notify(`Time advances to ${GameData.formatTime(e.time)}...`);
+                }
+                // Move to eavesdrop location if not there
+                if (Engine.state.currentLocation !== e.location) {
+                    Hotspots.setEnabled(false);
+                    Renderer.startRoomTransition(() => {
+                        Engine.moveToLocation(e.location);
+                        Hotspots.setEnabled(true);
+                    });
+                }
+                World.refreshActions();
+            });
+            container.appendChild(btn);
+        });
+    }
+
+    // ── FEATURE 32: Per-Loop Statistics ──
+    function getLoopStatsHTML() {
+        const stats = Engine.getLoopStats();
+        return `<div style="margin-top:12px;border-top:1px solid rgba(212,160,32,0.2);padding-top:12px">
+            <div style="color:var(--amber);font-size:13px;margin-bottom:8px">Loop Statistics</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--text-dim)">
+                <div>🔍 Evidence this loop: <strong>${stats.evThisLoop}</strong></div>
+                <div>👤 NPCs talked to: <strong>${stats.npcsThisLoop}</strong></div>
+                <div>👂 Eavesdrops: <strong>${stats.eavesThisLoop}</strong></div>
+                <div>🚪 Rooms visited: <strong>${stats.roomsThisLoop}</strong></div>
+                <div>⚡ Efficiency: <strong>${stats.efficiency}%</strong></div>
+            </div>
+        </div>`;
+    }
+
+    // ── FEATURE 34: Keyboard Shortcut Overlay ──
+    let shortcutOverlayVisible = false;
+    function toggleShortcutOverlay() {
+        shortcutOverlayVisible = !shortcutOverlayVisible;
+        let overlay = document.getElementById('shortcut-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'shortcut-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;color:#d4a020;font-family:Courier New,monospace';
+            overlay.innerHTML = `<div style="max-width:500px;padding:30px;border:1px solid rgba(212,160,32,0.3);background:#0d0d1a">
+                <h2 style="margin:0 0 16px;font-size:18px;color:#d4a020">Keyboard Shortcuts</h2>
+                <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;font-size:13px;color:#8a8a9a">
+                    <span style="color:#d4a020">N</span><span>Open/Close Notebook</span>
+                    <span style="color:#d4a020">W</span><span>Wait (30 minutes)</span>
+                    <span style="color:#d4a020">F</span><span>Fast Forward</span>
+                    <span style="color:#d4a020">A</span><span>Make Accusation</span>
+                    <span style="color:#d4a020">M</span><span>Toggle Sound</span>
+                    <span style="color:#d4a020">I</span><span>Open Inventory</span>
+                    <span style="color:#d4a020">H / ?</span><span>Help / This Overlay</span>
+                    <span style="color:#d4a020">S</span><span>Save Game</span>
+                    <span style="color:#d4a020">Q</span><span>Quick Save</span>
+                    <span style="color:#d4a020">1-9</span><span>Quick Navigate to Exits</span>
+                    <span style="color:#d4a020">Esc</span><span>Close Current Screen</span>
+                </div>
+                <p style="margin-top:16px;font-size:11px;color:#6a6a80;text-align:center">Press any key to dismiss</p>
+            </div>`;
+            document.body.appendChild(overlay);
+        }
+        if (shortcutOverlayVisible) {
+            overlay.style.display = 'flex';
+            const dismiss = (e) => {
+                overlay.style.display = 'none';
+                shortcutOverlayVisible = false;
+                document.removeEventListener('keydown', dismiss);
+                overlay.removeEventListener('click', dismiss);
+            };
+            setTimeout(() => {
+                document.addEventListener('keydown', dismiss);
+                overlay.addEventListener('click', dismiss);
+            }, 100);
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+
     return {
         init, updateHUD, toggleNotebook,
         showWait, showFastForward, hideFastForward,
@@ -780,6 +927,7 @@ const UI = (() => {
         onEvidenceToggle, hideAllScreens, toggleSound,
         getTextSpeed, getEffectsLevel,
         showTutorialTip, checkTutorialTriggers,
-        settings,
+        settings, showSurrender, toggleShortcutOverlay,
+        addEavesdropShortcuts, getLoopStatsHTML,
     };
 })();
