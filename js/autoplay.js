@@ -2,9 +2,12 @@
    AUTOPLAY — Secret cheat code "srg2" activates auto-play.
    Spacebar toggles bot on/off. Session-only (no persistence).
 
-   Plays like a real human: variable timing, reading pauses,
-   step-by-step minigame solving, strategic exploration with
-   memory, eavesdrop hunting, notebook checks, natural pacing.
+   Maximum realism: ghost cursor with smooth movement, hover
+   before click, variable pacing with momentum shifts, reading
+   delays scaled to text length, step-by-step minigames with
+   mistakes, strategic Wait usage for eavesdrops, notebook tab
+   browsing, post-evidence reaction pauses, occasional mind
+   changes, urgency near midnight. 100% free, zero deps.
    ═══════════════════════════════════════════════════════ */
 
 const AutoPlay = (() => {
@@ -13,54 +16,176 @@ const AutoPlay = (() => {
     let activated = false;
     let running = false;
     let tickTimer = null;
-    let busy = false; // prevents overlapping actions
 
-    // ── Human-like Timing ──
-    const TICK_BASE = 800;    // base tick check interval (ms)
-    let nextActionDelay = 0;  // countdown before next action (ms)
-    let idleTicks = 0;        // how many ticks we've "thought" before acting
+    // ── Timing Constants ──
+    const TICK_MS = 100; // fast tick for smooth cursor movement
 
-    function randBetween(min, max) { return min + Math.random() * (max - min); }
+    function rand(min, max) { return min + Math.random() * (max - min); }
+    function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-    // Variable delays to look human
-    function shortPause()    { return randBetween(600, 1400); }    // quick glance
-    function readingPause()  { return randBetween(2000, 4000); }   // reading text
-    function thinkingPause() { return randBetween(1500, 3000); }   // deciding
-    function longPause()     { return randBetween(3500, 6000); }   // studying something
-    function hesitation()    { return Math.random() < 0.15 ? randBetween(2000, 4500) : 0; }
+    // ── Action Queue ──
+    // Instead of fixed delays, queue up micro-actions (hover, pause, click, wait)
+    const queue = [];
+    let queueDelay = 0; // ms until next queue step
 
-    // ── Bot Memory (per session) ──
-    const memory = {
-        roomsExplored: new Set(),       // rooms fully searched this loop
-        npcsSpokenTo: new Set(),        // NPCs talked to this loop
-        objectsExamined: new Set(),     // objects examined this loop
-        failedMinigameAttempts: {},     // track attempts per minigame
-        lastRoom: null,                 // avoid ping-ponging
-        roomVisitCount: {},             // how many times visited each room
-        loopsPlayed: 0,                 // how many loops the bot has played
-        notebookCheckTimer: 0,          // time since last notebook peek
-        eavesdropTargets: [],           // eavesdrops we're trying to catch
-        pendingAction: null,            // queued multi-step action
-        dialogueDepth: 0,              // how deep in current conversation
-        minigameStep: 0,               // step within a minigame solve
-        minigameTimer: 0,              // delay for next minigame step
+    function enqueue(...actions) { queue.push(...actions); }
+    function clearQueue() { queue.length = 0; queueDelay = 0; }
+
+    // Action types:
+    //   { type: 'wait', ms: 2000 }
+    //   { type: 'hover', target: hotspot }         — move ghost cursor, trigger tooltip
+    //   { type: 'click', target: hotspot }          — click the hotspot
+    //   { type: 'clickEl', el: domElement }          — click a DOM element
+    //   { type: 'key', key: 'n' }                    — simulate keypress
+    //   { type: 'fn', fn: () => {} }                 — run arbitrary function
+    //   { type: 'hoverEl', el: domElement }          — hover a DOM button
+
+    // ── Ghost Cursor ──
+    // Rendered on canvas to simulate where the player is "looking"
+    const cursor = {
+        x: 0, y: 0,           // current position (canvas coords)
+        targetX: 0, targetY: 0, // where we're moving to
+        visible: false,
+        opacity: 0,
+        speed: 0.08,           // lerp factor (lower = smoother)
     };
 
-    // Reset per-loop memory
+    function updateCursor() {
+        if (!running) { cursor.visible = false; return; }
+        // Smooth lerp toward target
+        const dx = cursor.targetX - cursor.x;
+        const dy = cursor.targetY - cursor.y;
+        // Variable speed: faster for long distances, slower near target
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = dist > 200 ? 0.06 : dist > 50 ? 0.08 : 0.12;
+        cursor.x += dx * speed;
+        cursor.y += dy * speed;
+        // Fade in/out
+        if (cursor.visible) {
+            cursor.opacity = Math.min(1, cursor.opacity + 0.08);
+        } else {
+            cursor.opacity = Math.max(0, cursor.opacity - 0.05);
+        }
+    }
+
+    function moveCursorTo(canvasX, canvasY) {
+        cursor.targetX = canvasX;
+        cursor.targetY = canvasY;
+        cursor.visible = true;
+    }
+
+    function moveCursorToHotspot(hs) {
+        const canvas = document.getElementById('game-canvas');
+        if (!canvas || !hs) return;
+        const w = canvas.width, h = canvas.height;
+        let cx, cy;
+        if (hs.rect) {
+            // Center of rect with slight randomness (humans don't click dead center)
+            cx = (hs.rect.x + hs.rect.w * (0.3 + Math.random() * 0.4)) * w;
+            cy = (hs.rect.y + hs.rect.h * (0.3 + Math.random() * 0.4)) * h;
+        } else if (hs.polygon) {
+            cx = hs.polygon.reduce((s, p) => s + p[0], 0) / hs.polygon.length * w;
+            cy = hs.polygon.reduce((s, p) => s + p[1], 0) / hs.polygon.length * h;
+            cx += rand(-10, 10);
+            cy += rand(-10, 10);
+        } else {
+            cx = w / 2 + rand(-50, 50);
+            cy = h / 2 + rand(-50, 50);
+        }
+        moveCursorTo(cx, cy);
+    }
+
+    // Dispatch a synthetic mousemove on the canvas to trigger tooltip
+    function simulateHover(hs) {
+        const canvas = document.getElementById('game-canvas');
+        if (!canvas || !hs) return;
+        const rect = canvas.getBoundingClientRect();
+        const w = canvas.width, h = canvas.height;
+        let cx, cy;
+        if (hs.rect) {
+            cx = (hs.rect.x + hs.rect.w / 2) * w;
+            cy = (hs.rect.y + hs.rect.h / 2) * h;
+        } else if (hs.polygon) {
+            cx = hs.polygon.reduce((s, p) => s + p[0], 0) / hs.polygon.length * w;
+            cy = hs.polygon.reduce((s, p) => s + p[1], 0) / hs.polygon.length * h;
+        } else return;
+        // Convert canvas coords to client coords
+        const clientX = rect.left + cx * (rect.width / w);
+        const clientY = rect.top + cy * (rect.height / h);
+        canvas.dispatchEvent(new MouseEvent('mousemove', {
+            clientX, clientY, bubbles: true
+        }));
+    }
+
+    // ── Bot Memory ──
+    const memory = {
+        roomsExplored: new Set(),
+        npcsSpokenTo: new Set(),
+        objectsExamined: new Set(),
+        lastRoom: null,
+        secondLastRoom: null,
+        roomVisitCount: {},
+        loopsPlayed: 0,
+        notebookCheckTimer: 0,
+        eavesdropTargets: [],
+        dialogueTurns: 0,
+        minigameStep: 0,
+        lastEvidenceTime: 0,        // timestamp of last evidence find (for reaction)
+        actionsThisTick: 0,         // track how active we've been
+        momentum: 1.0,              // pace multiplier (0.6=slow, 1.0=normal, 1.4=fast)
+        lastScreenChange: 0,
+        notebookTabsVisited: 0,
+        waitUsed: false,
+    };
+
     function resetLoopMemory() {
         memory.roomsExplored.clear();
         memory.npcsSpokenTo.clear();
         memory.objectsExamined.clear();
         memory.lastRoom = null;
+        memory.secondLastRoom = null;
         memory.roomVisitCount = {};
         memory.notebookCheckTimer = 0;
-        memory.dialogueDepth = 0;
+        memory.dialogueTurns = 0;
+        memory.minigameStep = 0;
+        memory.lastEvidenceTime = 0;
+        memory.actionsThisTick = 0;
+        memory.momentum = 1.0;
+        memory.notebookTabsVisited = 0;
+        memory.waitUsed = false;
         memory.loopsPlayed++;
         memory.eavesdropTargets = buildEavesdropPlan();
     }
 
+    // ── Momentum System ──
+    // Pace varies naturally: slow when exploring new rooms, fast when backtracking
+    function updateMomentum() {
+        const t = Engine.state.time;
+        // Slow and cautious early game
+        if (t < 480) memory.momentum = rand(0.7, 0.9);
+        // Normal pace mid-game
+        else if (t < 1200) memory.momentum = rand(0.9, 1.1);
+        // Urgent near midnight
+        else if (t < 1380) memory.momentum = rand(1.1, 1.3);
+        // Frantic in final hour
+        else memory.momentum = rand(1.2, 1.5);
+
+        // Recently found evidence? Slow down to process
+        if (Date.now() - memory.lastEvidenceTime < 5000) {
+            memory.momentum *= 0.6;
+        }
+    }
+
+    // Timing functions adjusted by momentum
+    function shortPause()    { return rand(500, 1200) / memory.momentum; }
+    function readingPause()  { return rand(1800, 3500) / memory.momentum; }
+    function thinkingPause() { return rand(1400, 2800) / memory.momentum; }
+    function longPause()     { return rand(3000, 5500) / memory.momentum; }
+    function hesitation()    { return Math.random() < 0.18 ? rand(1500, 4000) / memory.momentum : 0; }
+    function textReadTime(len) { return Math.min(6000, len * 28 + 600) / memory.momentum; }
+
     // ── Eavesdrop Planning ──
-    // Build a list of eavesdrops we should try to catch this loop
     function buildEavesdropPlan() {
         if (!GameData.eavesdrops) return [];
         const state = Engine.state;
@@ -74,86 +199,97 @@ const AutoPlay = (() => {
             .sort((a, b) => a.time - b.time);
     }
 
-    // ── Optimal Room Route ──
-    // Decide where to go based on what's available
-    function pickBestRoom() {
+    // ── Room Scoring ──
+    function scoreRoom(destId) {
         const state = Engine.state;
-        const currentLoc = state.currentLocation;
-        const loc = GameData.locations[currentLoc];
-        if (!loc) return null;
+        const destLoc = GameData.locations[destId];
+        if (!destLoc) return -999;
+        let score = 0;
 
-        const availableExits = loc.exits.filter(e =>
-            !e.requiresFlag || state.flags[e.requiresFlag]
-        );
-        if (availableExits.length === 0) return null;
-
-        // Score each possible destination
-        let best = null;
-        let bestScore = -Infinity;
-
-        availableExits.forEach(exit => {
-            const dest = exit.to;
-            let score = 0;
-            const destLoc = GameData.locations[dest];
-            if (!destLoc) return;
-
-            // Strong bonus: room has undiscovered evidence
-            destLoc.objects.forEach(obj => {
-                if (obj.evidence && !state.discoveredEvidence.has(obj.evidence)) {
-                    const ev = GameData.evidence[obj.evidence];
-                    if (!ev) return;
-                    if (ev.requiresLoop && state.loop < ev.requiresLoop) return;
-                    if (obj.requiresFlag && !state.flags[obj.requiresFlag]) return;
-                    score += 30;
-                }
-            });
-
-            // Bonus: NPCs here we haven't talked to
-            const npcsHere = Engine.getNPCsAtLocation(dest, state.time);
-            npcsHere.forEach(npc => {
-                if (!memory.npcsSpokenTo.has(npc.id)) score += 15;
-                else score += 2; // still worth visiting for deeper dialogue
-            });
-
-            // Bonus: eavesdrop coming up at this location
-            const upcomingEavesdrop = memory.eavesdropTargets.find(e =>
-                e.location === dest && Math.abs(state.time - e.time) <= 40
-            );
-            if (upcomingEavesdrop) score += 50; // highest priority
-
-            // Penalty: just came from there (avoid ping-pong)
-            if (dest === memory.lastRoom) score -= 20;
-
-            // Penalty: visited many times already
-            const visits = memory.roomVisitCount[dest] || 0;
-            score -= visits * 5;
-
-            // Bonus: haven't fully explored yet
-            if (!memory.roomsExplored.has(dest)) score += 10;
-
-            // Small random factor (humans aren't perfectly optimal)
-            score += randBetween(-3, 3);
-
-            if (score > bestScore) {
-                bestScore = score;
-                best = exit;
+        // Undiscovered evidence
+        destLoc.objects.forEach(obj => {
+            if (obj.evidence && !state.discoveredEvidence.has(obj.evidence)) {
+                const ev = GameData.evidence[obj.evidence];
+                if (!ev) return;
+                if (ev.requiresLoop && state.loop < ev.requiresLoop) return;
+                if (obj.requiresFlag && !state.flags[obj.requiresFlag]) return;
+                score += 35;
             }
         });
 
+        // NPCs not yet spoken to
+        const npcsHere = Engine.getNPCsAtLocation(destId, state.time);
+        npcsHere.forEach(npc => {
+            if (!memory.npcsSpokenTo.has(npc.id)) score += 18;
+            else score += 3;
+        });
+
+        // Upcoming eavesdrop
+        const eavesdrop = memory.eavesdropTargets.find(e =>
+            e.location === destId && Math.abs(state.time - e.time) <= 45
+        );
+        if (eavesdrop) score += 60;
+
+        // Avoid ping-pong
+        if (destId === memory.lastRoom) score -= 25;
+        if (destId === memory.secondLastRoom) score -= 10;
+
+        // Visit count penalty
+        score -= (memory.roomVisitCount[destId] || 0) * 6;
+
+        // Unexplored bonus
+        if (!memory.roomsExplored.has(destId)) score += 12;
+
+        // Human imprecision
+        score += rand(-4, 4);
+
+        return score;
+    }
+
+    function pickBestExit(exits) {
+        if (exits.length === 0) return null;
+        let best = null, bestScore = -Infinity;
+        exits.forEach(hs => {
+            const destId = getExitDestination(hs);
+            if (!destId) return;
+            const score = scoreRoom(destId);
+            if (score > bestScore) { bestScore = score; best = hs; }
+        });
         return best;
+    }
+
+    function getExitDestination(hs) {
+        if (!hs.label) return null;
+        const currentLoc = GameData.locations[Engine.state.currentLocation];
+        if (!currentLoc) return null;
+        for (const exit of currentLoc.exits) {
+            if (hs.label.includes(exit.label)) return exit.to;
+        }
+        return null;
+    }
+
+    // Should we use the Wait button to reach an eavesdrop?
+    function shouldWait() {
+        const state = Engine.state;
+        const nextEavesdrop = memory.eavesdropTargets.find(e => {
+            const timeDiff = e.time - state.time;
+            return timeDiff > 20 && timeDiff < 60; // 20-60 minutes away
+        });
+        if (!nextEavesdrop) return null;
+        // Only wait if we're already at or near the eavesdrop location
+        if (state.currentLocation === nextEavesdrop.location) return nextEavesdrop;
+        // Or if eavesdrop is close and no other productive actions
+        return null;
     }
 
     // ── Code Entry Detection ──
     document.addEventListener('keydown', (e) => {
-        // Spacebar toggle (only after activation)
         if (activated && e.key === ' ' && Engine.state.screen !== 'title') {
             e.preventDefault();
             e.stopPropagation();
             toggle();
             return;
         }
-
-        // Code entry sequence
         if (!activated) {
             if (e.key.toLowerCase() === CODE[codeIndex]) {
                 codeIndex++;
@@ -173,257 +309,496 @@ const AutoPlay = (() => {
         if (running) {
             Engine.notify('AUTO-PLAY ON');
             resetLoopMemory();
-            nextActionDelay = 0;
-            busy = false;
-            tickTimer = setInterval(tick, TICK_BASE);
+            clearQueue();
+            // Initialize cursor near center
+            const canvas = document.getElementById('game-canvas');
+            if (canvas) {
+                cursor.x = canvas.width / 2;
+                cursor.y = canvas.height / 2;
+                cursor.targetX = cursor.x;
+                cursor.targetY = cursor.y;
+            }
+            tickTimer = setInterval(tick, TICK_MS);
         } else {
             Engine.notify('AUTO-PLAY OFF');
             if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
-            busy = false;
+            clearQueue();
+            cursor.visible = false;
         }
     }
 
-    // ── Main Tick (runs every TICK_BASE ms) ──
+    // ── Main Tick ──
     function tick() {
-        if (!running || busy) return;
+        if (!running) return;
+        updateCursor();
+        updateMomentum();
 
-        // Countdown delay before next action
-        if (nextActionDelay > 0) {
-            nextActionDelay -= TICK_BASE;
+        // Process queue
+        if (queue.length > 0) {
+            if (queueDelay > 0) {
+                queueDelay -= TICK_MS;
+                return;
+            }
+            const action = queue.shift();
+            processAction(action);
             return;
         }
 
+        // No queued actions — decide what to do
         try {
             const screen = Engine.state.screen;
             switch (screen) {
-                case 'title':        handleTitle(); break;
-                case 'intro':        handleIntro(); break;
-                case 'playing':      handlePlaying(); break;
-                case 'dialogue':     handleDialogue(); break;
-                case 'minigame':     handleMinigame(); break;
-                case 'notebook':     handleNotebook(); break;
-                case 'accusation':   handleAccusation(); break;
-                case 'fast_forward': handleFastForward(); break;
-                case 'eavesdrop':    handleEavesdrop(); break;
-                case 'loop_recap':   handleLoopRecap(); break;
+                case 'title':        decideTitle(); break;
+                case 'intro':        decideIntro(); break;
+                case 'playing':      decidePlaying(); break;
+                case 'dialogue':     decideDialogue(); break;
+                case 'minigame':     decideMinigame(); break;
+                case 'notebook':     decideNotebook(); break;
+                case 'accusation':   decideAccusation(); break;
+                case 'fast_forward': decideFastForward(); break;
+                case 'eavesdrop':    decideEavesdrop(); break;
+                case 'loop_recap':   decideLoopRecap(); break;
+                case 'help':         decideHelp(); break;
                 case 'ending':       break;
-                case 'help':         handleHelp(); break;
                 case 'settings':     break;
             }
         } catch (e) {
-            // Game state may be in transition — wait a tick
-            nextActionDelay = shortPause();
+            queueDelay = shortPause();
+        }
+    }
+
+    function processAction(action) {
+        switch (action.type) {
+            case 'wait':
+                queueDelay = action.ms;
+                break;
+            case 'hover':
+                moveCursorToHotspot(action.target);
+                simulateHover(action.target);
+                queueDelay = action.ms || rand(400, 900); // linger on hover
+                break;
+            case 'click':
+                Audio.playSound('click');
+                if (action.target && action.target.action) action.target.action();
+                queueDelay = action.ms || 200;
+                break;
+            case 'clickEl':
+                if (action.el) {
+                    Audio.playSound('click');
+                    action.el.click();
+                }
+                queueDelay = action.ms || 200;
+                break;
+            case 'hoverEl':
+                // Move cursor near the DOM element
+                if (action.el) {
+                    const rect = action.el.getBoundingClientRect();
+                    moveCursorTo(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                }
+                queueDelay = action.ms || rand(300, 700);
+                break;
+            case 'key':
+                document.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: action.key, bubbles: true
+                }));
+                queueDelay = action.ms || 150;
+                break;
+            case 'fn':
+                if (action.fn) action.fn();
+                queueDelay = action.ms || 0;
+                break;
         }
     }
 
     // ════════════════════════════════════════════════════
-    // SCREEN HANDLERS
+    // DECISION MAKERS (queue up actions)
     // ════════════════════════════════════════════════════
 
-    function handleTitle() {
-        nextActionDelay = readingPause(); // "player reads title screen"
+    function decideTitle() {
+        enqueue({ type: 'wait', ms: readingPause() });
         const cont = document.getElementById('btn-continue');
-        const newg = document.getElementById('btn-new-game');
-        if (cont && cont.style.display !== 'none') {
-            cont.click();
-        } else if (newg) {
-            newg.click();
+        const btn = (cont && cont.style.display !== 'none') ? cont : document.getElementById('btn-new-game');
+        if (btn) {
+            enqueue({ type: 'hoverEl', el: btn, ms: rand(600, 1200) });
+            enqueue({ type: 'clickEl', el: btn });
         }
     }
 
-    function handleIntro() {
-        // Read each intro slide for a natural duration
-        nextActionDelay = readingPause();
+    function decideIntro() {
+        const textEl = document.getElementById('intro-text');
+        const len = textEl ? textEl.textContent.length : 50;
+        enqueue({ type: 'wait', ms: textReadTime(len) + hesitation() });
         const screen = document.getElementById('intro-screen');
-        if (screen) screen.click();
+        if (screen) enqueue({ type: 'clickEl', el: screen });
     }
 
-    function handleLoopRecap() {
-        // Read the recap before clicking
-        nextActionDelay = longPause();
+    function decideLoopRecap() {
+        // Read the recap content
+        enqueue({ type: 'wait', ms: longPause() + rand(1000, 2000) });
         const btn = document.getElementById('btn-begin-loop');
         if (btn) {
-            btn.click();
-            resetLoopMemory();
+            enqueue({ type: 'hoverEl', el: btn, ms: rand(400, 800) });
+            enqueue({ type: 'clickEl', el: btn });
+            enqueue({ type: 'fn', fn: () => resetLoopMemory() });
         }
     }
 
-    function handleHelp() {
-        nextActionDelay = shortPause();
+    function decideHelp() {
+        enqueue({ type: 'wait', ms: readingPause() });
         const btn = document.getElementById('help-close');
-        if (btn) btn.click();
+        if (btn) enqueue({ type: 'clickEl', el: btn });
     }
 
-    // ── Playing (Main Game) ──
-    function handlePlaying() {
-        // If transitioning, wait patiently
+    // ── Playing ──
+    function decidePlaying() {
         if (Renderer.isTransitioning()) {
-            nextActionDelay = shortPause();
+            enqueue({ type: 'wait', ms: shortPause() });
             return;
         }
 
-        // Track current room visits
-        const currentLoc = Engine.state.currentLocation;
-        memory.roomVisitCount[currentLoc] = (memory.roomVisitCount[currentLoc] || 0);
+        const state = Engine.state;
+        const currentLoc = state.currentLocation;
 
-        // If just entered a new room, pause to "look around"
+        // Just entered a new room — look around
         if (currentLoc !== memory.lastRoom) {
+            memory.secondLastRoom = memory.lastRoom;
             memory.lastRoom = currentLoc;
-            memory.roomVisitCount[currentLoc]++;
-            nextActionDelay = readingPause() + hesitation();
+            memory.roomVisitCount[currentLoc] = (memory.roomVisitCount[currentLoc] || 0) + 1;
+
+            // Idle gaze: move cursor around the room
+            const canvas = document.getElementById('game-canvas');
+            if (canvas) {
+                const w = canvas.width, h = canvas.height;
+                enqueue({ type: 'fn', fn: () => moveCursorTo(w * rand(0.2, 0.8), h * rand(0.2, 0.5)) });
+                enqueue({ type: 'wait', ms: rand(800, 1500) });
+                enqueue({ type: 'fn', fn: () => moveCursorTo(w * rand(0.1, 0.9), h * rand(0.3, 0.7)) });
+                enqueue({ type: 'wait', ms: readingPause() + hesitation() });
+            }
             return;
         }
 
-        // Occasionally check notebook (like a real detective)
-        memory.notebookCheckTimer += TICK_BASE;
-        if (memory.notebookCheckTimer > 45000 && Engine.state.discoveredEvidence.size > 0 && Math.random() < 0.12) {
+        // ── Notebook Check ──
+        memory.notebookCheckTimer += TICK_MS;
+        if (memory.notebookCheckTimer > 40000 && state.discoveredEvidence.size > 2 && Math.random() < 0.08) {
             memory.notebookCheckTimer = 0;
-            nextActionDelay = shortPause();
-            // Simulate pressing N
-            const evt = new KeyboardEvent('keydown', { key: 'n', bubbles: true });
-            document.dispatchEvent(evt);
+            enqueue({ type: 'wait', ms: shortPause() });
+            enqueue({ type: 'key', key: 'n' });
             return;
         }
 
-        // Past murder time — wait for midnight
-        if (Engine.state.time >= 1410) {
-            nextActionDelay = longPause();
+        // ── Past Murder ──
+        if (state.time >= 1410) {
+            // Idle in room, occasionally look around
+            const canvas = document.getElementById('game-canvas');
+            if (canvas) {
+                enqueue({ type: 'fn', fn: () => moveCursorTo(canvas.width * rand(0.2, 0.8), canvas.height * rand(0.2, 0.7)) });
+            }
+            enqueue({ type: 'wait', ms: longPause() });
             return;
         }
 
-        // Check if there's an eavesdrop we should go catch
-        const urgentEavesdrop = memory.eavesdropTargets.find(e => {
-            const timeDiff = e.time - Engine.state.time;
-            return timeDiff > -10 && timeDiff < 50; // within 50 min window
-        });
-
-        if (urgentEavesdrop && Engine.state.currentLocation !== urgentEavesdrop.location) {
-            // Navigate toward eavesdrop location
-            const hotspots = Hotspots.getHotspots();
-            const exitToEavesdrop = hotspots.find(hs =>
-                hs.type === 'exit' && hs.action &&
-                isExitToward(hs, urgentEavesdrop.location)
-            );
-            if (exitToEavesdrop) {
-                nextActionDelay = thinkingPause();
-                Audio.playSound('click');
-                exitToEavesdrop.action();
+        // ── Strategic Wait for Eavesdrop ──
+        const waitTarget = shouldWait();
+        if (waitTarget && !memory.waitUsed) {
+            const timeDiff = waitTarget.time - state.time;
+            if (timeDiff > 20 && timeDiff <= 40) {
+                memory.waitUsed = true;
+                enqueue({ type: 'wait', ms: thinkingPause() });
+                // Use the wait button
+                const waitBtn = document.getElementById('btn-wait');
+                if (waitBtn) {
+                    enqueue({ type: 'hoverEl', el: waitBtn, ms: rand(400, 800) });
+                    enqueue({ type: 'clickEl', el: waitBtn });
+                    enqueue({ type: 'wait', ms: shortPause() });
+                }
                 return;
             }
         }
 
-        // Get available hotspots
+        // ── Navigate Toward Eavesdrop ──
+        const urgentEavesdrop = memory.eavesdropTargets.find(e => {
+            const diff = e.time - state.time;
+            return diff > -15 && diff < 55;
+        });
+        if (urgentEavesdrop && currentLoc !== urgentEavesdrop.location) {
+            const hotspots = Hotspots.getHotspots();
+            const exitHS = hotspots.find(hs =>
+                hs.type === 'exit' && hs.action && isExitToward(hs, urgentEavesdrop.location)
+            );
+            if (exitHS) {
+                enqueue({ type: 'hover', target: exitHS, ms: rand(500, 1000) });
+                enqueue({ type: 'wait', ms: thinkingPause() });
+                enqueue({ type: 'click', target: exitHS });
+                return;
+            }
+        }
+
+        // ── Get Hotspots ──
         const hotspots = Hotspots.getHotspots();
         if (!hotspots || hotspots.length === 0) {
-            nextActionDelay = shortPause();
+            enqueue({ type: 'wait', ms: shortPause() });
             return;
         }
 
-        // Categorize hotspots
-        const evidence = [];
-        const npcs = [];
-        const objects = [];
-        const exits = [];
-
+        const evidence = [], npcs = [], objects = [], exits = [];
         hotspots.forEach(hs => {
-            if (hs.type === 'exit') {
-                exits.push(hs);
-            } else if (hs.type === 'npc') {
-                npcs.push(hs);
-            } else if (hs.hasEvidence && !Engine.state.discoveredEvidence.has(hs.evidenceId)) {
-                evidence.push(hs);
-            } else if (hs.type === 'object' || hs.type === 'examine') {
-                objects.push(hs);
-            }
+            if (hs.type === 'exit') exits.push(hs);
+            else if (hs.type === 'npc') npcs.push(hs);
+            else if (hs.hasEvidence && !state.discoveredEvidence.has(hs.evidenceId)) evidence.push(hs);
+            else if (hs.type === 'object' || hs.type === 'examine') objects.push(hs);
         });
 
-        // Filter NPCs to those we haven't spoken to recently
         const freshNPCs = npcs.filter(hs => {
-            const npcId = extractNPCId(hs);
-            return npcId && !memory.npcsSpokenTo.has(npcId);
+            const id = extractNPCId(hs);
+            return id && !memory.npcsSpokenTo.has(id);
         });
-
-        // Filter objects to those we haven't examined this loop
         const freshObjects = objects.filter(hs => {
-            const objId = extractObjectId(hs);
-            return objId && !memory.objectsExamined.has(objId);
+            const id = extractObjectId(hs);
+            return id && !memory.objectsExamined.has(id);
         });
 
-        // ── Decision Priority ──
-        let target = null;
-        let delay = thinkingPause();
+        // ── Decision with Hover-Before-Click ──
 
         if (evidence.length > 0) {
-            // Evidence is always top priority — examine it
-            target = evidence[0];
-            delay = thinkingPause(); // "noticing something"
-        } else if (freshNPCs.length > 0) {
-            // Talk to someone new
-            target = freshNPCs[Math.floor(Math.random() * freshNPCs.length)];
-            delay = shortPause();
-            const npcId = extractNPCId(target);
-            if (npcId) memory.npcsSpokenTo.add(npcId);
-        } else if (freshObjects.length > 0) {
-            // Examine remaining objects
-            target = freshObjects[0];
-            delay = thinkingPause();
-            const objId = extractObjectId(target);
-            if (objId) memory.objectsExamined.add(objId);
-        } else {
-            // Room is fully explored — mark it and move on
-            memory.roomsExplored.add(currentLoc);
-
-            // If we've talked to NPCs but there might be deeper dialogue, re-talk
-            if (npcs.length > 0 && Math.random() < 0.2) {
-                target = npcs[Math.floor(Math.random() * npcs.length)];
-                delay = thinkingPause();
-            } else {
-                // Find best exit
-                const bestExit = pickBestRoom();
-                if (bestExit) {
-                    // Find the hotspot matching this exit
-                    target = exits.find(hs =>
-                        hs.label && hs.label.includes(bestExit.label)
-                    );
-                    // Fallback: just pick any exit
-                    if (!target && exits.length > 0) {
-                        // Avoid going back to previous room
-                        const forwardExits = exits.filter(hs => {
-                            const label = hs.label || '';
-                            const prevLoc = Engine.state.previousLocation;
-                            if (!prevLoc) return true;
-                            const prevName = GameData.locations[prevLoc]?.name || '';
-                            return !label.includes(prevName);
-                        });
-                        target = forwardExits.length > 0
-                            ? forwardExits[Math.floor(Math.random() * forwardExits.length)]
-                            : exits[Math.floor(Math.random() * exits.length)];
-                    }
-                    delay = readingPause(); // "deciding where to go"
-                }
+            const target = evidence[0];
+            // Sometimes glance at another hotspot first (mind-change effect)
+            if (objects.length > 0 && Math.random() < 0.25) {
+                enqueue({ type: 'hover', target: pick(objects), ms: rand(400, 800) });
             }
+            enqueue({ type: 'hover', target: target, ms: rand(600, 1200) });
+            enqueue({ type: 'wait', ms: thinkingPause() + hesitation() });
+            enqueue({ type: 'click', target: target });
+            enqueue({ type: 'fn', fn: () => { memory.lastEvidenceTime = Date.now(); } });
+            return;
         }
 
-        if (target && target.action) {
-            nextActionDelay = delay + hesitation();
-            Audio.playSound('click');
-            target.action();
+        if (freshNPCs.length > 0) {
+            const target = pick(freshNPCs);
+            const npcId = extractNPCId(target);
+            if (npcId) memory.npcsSpokenTo.add(npcId);
+            enqueue({ type: 'hover', target: target, ms: rand(500, 1000) });
+            enqueue({ type: 'wait', ms: shortPause() + hesitation() });
+            enqueue({ type: 'click', target: target });
+            return;
+        }
+
+        if (freshObjects.length > 0) {
+            const target = freshObjects[0];
+            const objId = extractObjectId(target);
+            if (objId) memory.objectsExamined.add(objId);
+            // Occasionally scan another object first
+            if (freshObjects.length > 1 && Math.random() < 0.3) {
+                enqueue({ type: 'hover', target: freshObjects[1], ms: rand(300, 600) });
+            }
+            enqueue({ type: 'hover', target: target, ms: rand(500, 1000) });
+            enqueue({ type: 'wait', ms: thinkingPause() });
+            enqueue({ type: 'click', target: target });
+            return;
+        }
+
+        // Room fully explored
+        memory.roomsExplored.add(currentLoc);
+
+        // Occasionally re-talk to NPCs for deeper dialogue
+        if (npcs.length > 0 && Math.random() < 0.2) {
+            const target = pick(npcs);
+            enqueue({ type: 'hover', target: target, ms: rand(500, 900) });
+            enqueue({ type: 'wait', ms: thinkingPause() });
+            enqueue({ type: 'click', target: target });
+            return;
+        }
+
+        // Pick best exit
+        if (exits.length > 0) {
+            const bestExit = pickBestExit(exits);
+            const target = bestExit || pick(exits);
+            // Sometimes hover a different exit first (considering options)
+            if (exits.length > 1 && Math.random() < 0.3) {
+                const other = exits.find(e => e !== target) || exits[0];
+                enqueue({ type: 'hover', target: other, ms: rand(400, 700) });
+            }
+            enqueue({ type: 'hover', target: target, ms: rand(600, 1100) });
+            enqueue({ type: 'wait', ms: readingPause() + hesitation() });
+            enqueue({ type: 'click', target: target });
         } else {
-            nextActionDelay = shortPause();
+            enqueue({ type: 'wait', ms: shortPause() });
         }
     }
 
-    // Check if an exit hotspot leads toward a target location
+    // ── Dialogue ──
+    function decideDialogue() {
+        const textEl = document.getElementById('dialogue-text');
+        const buttons = document.querySelectorAll('#dialogue-choices button');
+
+        if (buttons.length === 0) {
+            // Typewriter still going
+            memory.dialogueTurns++;
+            if (memory.dialogueTurns <= 1) {
+                // Let typewriter run for a bit (reading along)
+                enqueue({ type: 'wait', ms: readingPause() + rand(500, 1500) });
+            } else {
+                // Click to finish typewriter (impatient after waiting)
+                if (textEl) enqueue({ type: 'clickEl', el: textEl });
+                enqueue({ type: 'wait', ms: shortPause() });
+                memory.dialogueTurns = 0;
+            }
+            return;
+        }
+
+        memory.dialogueTurns = 0;
+
+        // Read the NPC's text
+        const textLen = textEl ? textEl.textContent.length : 40;
+        enqueue({ type: 'wait', ms: textReadTime(textLen) });
+
+        // Categorize choices
+        const available = [], locked = [];
+        let endBtn = null;
+        buttons.forEach(btn => {
+            if (btn.classList.contains('locked')) { locked.push(btn); return; }
+            if (btn.textContent.includes('End conversation') || btn.textContent.includes('[End')) {
+                endBtn = btn;
+            } else {
+                available.push(btn);
+            }
+        });
+
+        // Scan choices visually (hover over a couple before deciding)
+        if (available.length > 1) {
+            // Hover over 1-2 choices before picking
+            const scanCount = Math.min(available.length, randInt(1, 2));
+            for (let i = 0; i < scanCount; i++) {
+                enqueue({ type: 'hoverEl', el: available[i], ms: rand(300, 700) });
+            }
+            enqueue({ type: 'wait', ms: rand(400, 1000) }); // "deciding"
+        }
+
+        // Pick choice
+        let chosen = null;
+        const evidenceChoices = available.filter(b => b.classList.contains('evidence-choice'));
+        if (evidenceChoices.length > 0) {
+            chosen = Math.random() < 0.85 ? evidenceChoices[0] : pick(evidenceChoices);
+        } else if (available.length > 0) {
+            if (available.length === 1) {
+                chosen = available[0];
+            } else {
+                // Weighted: prefer earlier options but not rigidly
+                const weights = available.map((_, i) => Math.max(0.15, 1 - i * 0.3));
+                const total = weights.reduce((a, b) => a + b, 0);
+                let r = Math.random() * total;
+                for (let i = 0; i < weights.length; i++) {
+                    r -= weights[i];
+                    if (r <= 0) { chosen = available[i]; break; }
+                }
+                if (!chosen) chosen = available[0];
+            }
+        } else if (endBtn) {
+            chosen = endBtn;
+        }
+
+        if (chosen) {
+            enqueue({ type: 'hoverEl', el: chosen, ms: rand(200, 500) });
+            enqueue({ type: 'clickEl', el: chosen });
+        }
+    }
+
+    // ── Minigame ──
+    function decideMinigame() {
+        if (!MiniGames.isActive()) return;
+
+        memory.minigameStep++;
+
+        // Fallback after too many attempts
+        if (memory.minigameStep > 14) {
+            memory.minigameStep = 0;
+            enqueue({ type: 'wait', ms: shortPause() });
+            enqueue({ type: 'fn', fn: () => MiniGames.autoSolve() });
+            return;
+        }
+
+        // Pause like thinking, then try a step
+        enqueue({ type: 'wait', ms: rand(1200, 2800) / memory.momentum });
+
+        if (MiniGames.botStep) {
+            enqueue({ type: 'fn', fn: () => {
+                const solved = MiniGames.botStep();
+                if (solved) {
+                    memory.minigameStep = 0;
+                }
+            }});
+            // React to step result
+            enqueue({ type: 'wait', ms: rand(400, 1000) });
+        } else {
+            enqueue({ type: 'wait', ms: longPause() });
+            enqueue({ type: 'fn', fn: () => { MiniGames.autoSolve(); memory.minigameStep = 0; } });
+        }
+    }
+
+    // ── Notebook (browse tabs before closing) ──
+    function decideNotebook() {
+        const tabs = ['clues', 'profiles', 'timeline', 'board'];
+        if (memory.notebookTabsVisited < 2 && Engine.state.discoveredEvidence.size > 1) {
+            // Browse a tab
+            const tabName = tabs[memory.notebookTabsVisited];
+            const tabEl = document.querySelector(`.nb-tab[data-tab="${tabName}"]`);
+            if (tabEl) {
+                enqueue({ type: 'hoverEl', el: tabEl, ms: rand(300, 600) });
+                enqueue({ type: 'clickEl', el: tabEl });
+                enqueue({ type: 'wait', ms: longPause() }); // "reading the tab"
+            }
+            memory.notebookTabsVisited++;
+            return;
+        }
+
+        // Done browsing — close
+        memory.notebookTabsVisited = 0;
+        enqueue({ type: 'wait', ms: shortPause() });
+        const closeBtn = document.getElementById('notebook-close');
+        if (closeBtn) {
+            enqueue({ type: 'hoverEl', el: closeBtn, ms: rand(200, 400) });
+            enqueue({ type: 'clickEl', el: closeBtn });
+        }
+    }
+
+    function decideAccusation() {
+        enqueue({ type: 'wait', ms: thinkingPause() });
+        const cancelBtn = document.getElementById('btn-cancel-accuse');
+        if (cancelBtn) {
+            enqueue({ type: 'hoverEl', el: cancelBtn, ms: rand(300, 600) });
+            enqueue({ type: 'clickEl', el: cancelBtn });
+        } else {
+            enqueue({ type: 'key', key: 'Escape' });
+        }
+    }
+
+    function decideFastForward() {
+        enqueue({ type: 'wait', ms: shortPause() });
+        const cancelBtn = document.getElementById('ff-cancel');
+        if (cancelBtn) {
+            enqueue({ type: 'hoverEl', el: cancelBtn, ms: rand(200, 400) });
+            enqueue({ type: 'clickEl', el: cancelBtn });
+        }
+    }
+
+    function decideEavesdrop() {
+        // Read each line carefully — eavesdrops are critical
+        const textEl = document.getElementById('eavesdrop-text');
+        const len = textEl ? textEl.textContent.length : 60;
+        enqueue({ type: 'wait', ms: textReadTime(len) + rand(800, 1500) });
+        const overlay = document.getElementById('eavesdrop-overlay');
+        if (overlay) enqueue({ type: 'clickEl', el: overlay });
+    }
+
+    // ── Helpers ──
+
     function isExitToward(hs, targetLocation) {
         if (!hs.label) return false;
         const targetName = GameData.locations[targetLocation]?.name || '';
         if (hs.label.includes(targetName)) return true;
-        // Check if the exit goes to grand_hallway (hub) when target is elsewhere
         if (hs.label.includes('Grand Hallway') && targetLocation !== Engine.state.currentLocation) return true;
         return false;
     }
 
-    // Extract NPC ID from a hotspot label like "🗣️ Talk to Lady Evelyn"
     function extractNPCId(hs) {
         if (!hs.label) return null;
         for (const [id, npc] of Object.entries(GameData.npcs)) {
@@ -432,7 +807,6 @@ const AutoPlay = (() => {
         return null;
     }
 
-    // Extract object ID from hotspot label
     function extractObjectId(hs) {
         if (!hs.label) return null;
         const loc = GameData.locations[Engine.state.currentLocation];
@@ -443,148 +817,10 @@ const AutoPlay = (() => {
         return null;
     }
 
-    // ── Dialogue ──
-    function handleDialogue() {
-        const textEl = document.getElementById('dialogue-text');
-        const buttons = document.querySelectorAll('#dialogue-choices button');
-
-        // Wait for typewriter to finish (or skip it after a reading pause)
-        if (buttons.length === 0) {
-            // Typewriter still going — wait, then click to skip
-            if (memory.dialogueDepth === 0) {
-                nextActionDelay = readingPause();
-                memory.dialogueDepth = 1;
-            } else {
-                // Click to skip typewriter
-                if (textEl) textEl.click();
-                nextActionDelay = shortPause();
-                memory.dialogueDepth = 0;
-            }
-            return;
-        }
-
-        // Choices are visible — "read" them first
-        const textLength = textEl ? textEl.textContent.length : 0;
-        const readTime = Math.min(5000, textLength * 30 + 800); // ~30ms per char
-
-        const available = [];
-        let endBtn = null;
-
-        buttons.forEach(btn => {
-            if (btn.classList.contains('locked')) return;
-            const text = btn.textContent;
-            if (text.includes('End conversation') || text.includes('[End')) {
-                endBtn = btn;
-            } else {
-                available.push(btn);
-            }
-        });
-
-        // Pick a choice with human-like preference
-        let chosen = null;
-        const evidenceChoices = available.filter(b => b.classList.contains('evidence-choice'));
-
-        if (evidenceChoices.length > 0) {
-            // Evidence choices are gold — pick one (prefer first, but occasionally pick another)
-            chosen = evidenceChoices[Math.random() < 0.8 ? 0 : Math.floor(Math.random() * evidenceChoices.length)];
-        } else if (available.length > 0) {
-            // Normal choices — don't always pick first (human reads and considers)
-            if (available.length === 1) {
-                chosen = available[0];
-            } else {
-                // Slight preference for earlier choices but not always
-                const weights = available.map((_, i) => Math.max(0.1, 1 - i * 0.25));
-                const totalWeight = weights.reduce((a, b) => a + b, 0);
-                let r = Math.random() * totalWeight;
-                for (let i = 0; i < weights.length; i++) {
-                    r -= weights[i];
-                    if (r <= 0) { chosen = available[i]; break; }
-                }
-                if (!chosen) chosen = available[0];
-            }
-        } else if (endBtn) {
-            chosen = endBtn;
-            memory.dialogueDepth = 0;
-        }
-
-        if (chosen) {
-            nextActionDelay = readTime + hesitation();
-            Audio.playSound('click');
-            chosen.click();
-        }
-    }
-
-    // ── Minigame (Step-by-Step Solving) ──
-    function handleMinigame() {
-        if (!MiniGames.isActive()) return;
-
-        // Use step-by-step for realistic feel, with delays between steps
-        const mgType = MiniGames.getActiveType ? MiniGames.getActiveType() : null;
-
-        // If we've been stuck for a while, use autoSolve as fallback
-        memory.minigameStep++;
-        if (memory.minigameStep > 12) {
-            memory.minigameStep = 0;
-            MiniGames.autoSolve();
-            nextActionDelay = shortPause();
-            return;
-        }
-
-        // Try step-by-step interaction via exposed methods
-        if (MiniGames.botStep) {
-            nextActionDelay = thinkingPause();
-            const solved = MiniGames.botStep();
-            if (solved) {
-                memory.minigameStep = 0;
-                nextActionDelay = readingPause(); // "react to solving"
-            }
-        } else {
-            // Fallback: autoSolve after a realistic pause
-            nextActionDelay = longPause();
-            MiniGames.autoSolve();
-            memory.minigameStep = 0;
-        }
-    }
-
-    // ── Other Screens ──
-
-    function handleNotebook() {
-        // Spend time "reading" the notebook before closing
-        nextActionDelay = longPause();
-        const closeBtn = document.getElementById('notebook-close');
-        if (closeBtn) closeBtn.click();
-    }
-
-    function handleAccusation() {
-        // Don't auto-accuse — close after a pause
-        nextActionDelay = thinkingPause();
-        const cancelBtn = document.getElementById('btn-cancel-accuse');
-        if (cancelBtn) {
-            cancelBtn.click();
-        } else {
-            const evt = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
-            document.dispatchEvent(evt);
-        }
-    }
-
-    function handleFastForward() {
-        nextActionDelay = shortPause();
-        const cancelBtn = document.getElementById('ff-cancel');
-        if (cancelBtn) cancelBtn.click();
-    }
-
-    function handleEavesdrop() {
-        // Read eavesdrop text before advancing — this is important content
-        const textEl = document.getElementById('eavesdrop-text');
-        const textLength = textEl ? textEl.textContent.length : 0;
-        nextActionDelay = Math.max(readingPause(), textLength * 35 + 1000);
-        const overlay = document.getElementById('eavesdrop-overlay');
-        if (overlay) overlay.click();
-    }
-
     // ── Public API ──
     function isRunning() { return running; }
     function isActivated() { return activated; }
+    function getCursor() { return cursor; }
 
-    return { isRunning, isActivated };
+    return { isRunning, isActivated, getCursor };
 })();

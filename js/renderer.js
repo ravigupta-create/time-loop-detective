@@ -1112,9 +1112,11 @@ const Renderer = (() => {
         setupMouseHover();
     }
 
-    // ── Auto-Play Indicator ──
+    // ── Auto-Play Indicator + Ghost Cursor ──
     function renderAutoPlayIndicator() {
         if (typeof AutoPlay === 'undefined' || !AutoPlay.isRunning()) return;
+
+        // "AUTO" text
         const pulse = 0.6 + Math.sin(time * 4) * 0.4;
         ctx.save();
         ctx.globalAlpha = pulse;
@@ -1122,6 +1124,37 @@ const Renderer = (() => {
         ctx.fillStyle = '#d4a020';
         ctx.textAlign = 'left';
         ctx.fillText('AUTO', 16, 42);
+        ctx.restore();
+
+        // Ghost cursor — soft glowing circle showing where the "player" is looking
+        const cur = AutoPlay.getCursor();
+        if (!cur || cur.opacity <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = cur.opacity * 0.5;
+        // Outer glow
+        const glow = ctx.createRadialGradient(cur.x, cur.y, 0, cur.x, cur.y, 18);
+        glow.addColorStop(0, 'rgba(212, 160, 32, 0.35)');
+        glow.addColorStop(0.5, 'rgba(212, 160, 32, 0.1)');
+        glow.addColorStop(1, 'rgba(212, 160, 32, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cur.x, cur.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+        // Inner dot
+        ctx.globalAlpha = cur.opacity * 0.7;
+        ctx.fillStyle = '#d4a020';
+        ctx.beginPath();
+        ctx.arc(cur.x, cur.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Crosshair arms
+        ctx.strokeStyle = 'rgba(212, 160, 32, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cur.x - 8, cur.y); ctx.lineTo(cur.x - 3, cur.y);
+        ctx.moveTo(cur.x + 3, cur.y); ctx.lineTo(cur.x + 8, cur.y);
+        ctx.moveTo(cur.x, cur.y - 8); ctx.lineTo(cur.x, cur.y - 3);
+        ctx.moveTo(cur.x, cur.y + 3); ctx.lineTo(cur.x, cur.y + 8);
+        ctx.stroke();
         ctx.restore();
     }
 
