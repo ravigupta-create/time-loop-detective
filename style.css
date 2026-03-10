@@ -1303,3 +1303,361 @@ html, body {
     pointer-events: none;
     z-index: 999;
 }
+
+/* ══════════════════════════════════
+   SETTINGS SCREEN
+   ══════════════════════════════════ */
+#settings-screen {
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 7, 15, 0.92);
+    z-index: 200;
+}
+
+#settings-panel {
+    background: var(--bg-dark);
+    border: 1px solid var(--amber-dim);
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 420px;
+    width: 90%;
+}
+
+#settings-panel h2 {
+    font-family: var(--font-display);
+    color: var(--amber);
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.settings-section {
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.settings-section label {
+    color: var(--text-main);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.settings-slider {
+    -webkit-appearance: none;
+    width: 140px;
+    height: 6px;
+    background: var(--bg-light);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.settings-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--amber);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.settings-select {
+    background: var(--bg-light);
+    color: var(--text-main);
+    border: 1px solid var(--bg-light);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: var(--font-main);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* ══════════════════════════════════
+   TUTORIAL TIPS
+   ══════════════════════════════════ */
+.tutorial-tip {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(13, 13, 26, 0.95);
+    border: 1px solid var(--amber);
+    border-radius: 8px;
+    padding: 14px 20px;
+    max-width: 400px;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: all;
+}
+
+.tutorial-tip.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.tutorial-tip-content {
+    color: var(--text-main);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.tutorial-tip-content strong {
+    color: var(--amber);
+}
+
+.tutorial-tip-dismiss {
+    background: var(--amber-dim);
+    color: var(--text-bright);
+    border: none;
+    padding: 5px 14px;
+    border-radius: 4px;
+    font-family: var(--font-main);
+    font-size: 11px;
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+}
+
+.tutorial-tip-dismiss:hover {
+    background: var(--amber);
+    color: var(--bg-darkest);
+}
+
+/* ══════════════════════════════════
+   TEXT SIZE VARIANTS
+   ══════════════════════════════════ */
+body.text-small { font-size: 12px; }
+body.text-normal { font-size: 14px; }
+body.text-large { font-size: 17px; }
+
+body.text-large #room-description { font-size: 16px !important; }
+body.text-large #room-narration { font-size: 14px !important; }
+body.text-large #dialogue-text { font-size: 16px !important; }
+body.text-large .menu-btn { font-size: 16px; padding: 14px 32px; }
+
+/* ══════════════════════════════════
+   HIGH CONTRAST MODE
+   ══════════════════════════════════ */
+body.high-contrast {
+    --text-main: #ffffff;
+    --text-bright: #ffffff;
+    --text-dim: #aaaaaa;
+    --bg-dark: #000000;
+    --bg-mid: #111111;
+    --bg-light: #222222;
+}
+
+body.high-contrast #room-description,
+body.high-contrast #room-narration {
+    background: rgba(0, 0, 0, 0.95) !important;
+    color: #ffffff !important;
+}
+
+body.high-contrast .menu-btn {
+    border: 2px solid var(--amber) !important;
+}
+
+/* ══════════════════════════════════
+   ENHANCED MOBILE RESPONSIVE
+   ══════════════════════════════════ */
+@media (max-width: 768px) {
+    #hud-top {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px 8px;
+    }
+
+    #hud-bottom {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .hud-btn {
+        font-size: 11px;
+        padding: 6px 10px;
+        min-width: auto;
+    }
+
+    #room-description {
+        font-size: 12px !important;
+        max-width: 90% !important;
+        padding: 8px 12px !important;
+    }
+
+    #room-narration {
+        font-size: 11px !important;
+        max-width: 90% !important;
+    }
+
+    #dialogue-box {
+        max-width: 95% !important;
+        padding: 12px !important;
+    }
+
+    #notebook-panel {
+        width: 98% !important;
+        max-width: none !important;
+    }
+
+    .nb-tab {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+
+    #accusation-panel,
+    #ff-panel,
+    #help-panel,
+    #settings-panel {
+        max-width: 95% !important;
+        padding: 15px !important;
+    }
+
+    .suspect-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    #ending-content {
+        padding: 20px !important;
+    }
+
+    .tutorial-tip {
+        bottom: 70px;
+        max-width: 90%;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    #hud-bottom {
+        justify-content: center;
+    }
+
+    .hud-btn {
+        font-size: 10px;
+        padding: 5px 8px;
+    }
+
+    #dialogue-box {
+        margin-top: auto !important;
+        margin-bottom: 20px !important;
+        max-height: 60vh !important;
+    }
+
+    #dialogue-portrait {
+        width: 50px !important;
+        height: 50px !important;
+    }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+    .menu-btn {
+        min-height: 48px;
+        font-size: 15px;
+    }
+
+    .hud-btn {
+        min-height: 44px;
+    }
+
+    .nb-tab {
+        min-height: 44px;
+    }
+
+    .suspect-btn {
+        min-height: 48px;
+    }
+
+    .evidence-check {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .ff-btn {
+        min-height: 48px;
+    }
+}
+
+/* ══════════════════════════════════
+   ENHANCED ENDING SCREEN
+   ══════════════════════════════════ */
+#ending-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#ending-title {
+    font-family: var(--font-display);
+    font-size: 36px;
+    color: var(--amber);
+    margin-bottom: 24px;
+    text-shadow: 0 0 20px rgba(212, 160, 32, 0.3);
+}
+
+#ending-text {
+    color: var(--text-main);
+    line-height: 1.8;
+    margin-bottom: 24px;
+    font-style: italic;
+}
+
+#ending-stats {
+    background: rgba(13, 13, 26, 0.6);
+    border: 1px solid rgba(212, 160, 32, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    width: 100%;
+    line-height: 1.8;
+    font-size: 13px;
+}
+
+/* Canvas cursor classes (for hotspot interactions) */
+.cursor-examine { cursor: zoom-in !important; }
+.cursor-talk { cursor: pointer !important; }
+.cursor-move { cursor: pointer !important; }
+
+/* ══════════════════════════════════
+   NOTIFICATION ENHANCEMENTS
+   ══════════════════════════════════ */
+#notification.show.achievement {
+    background: linear-gradient(135deg, rgba(60, 40, 10, 0.95), rgba(30, 20, 5, 0.95));
+    border-color: var(--amber);
+    box-shadow: 0 0 20px rgba(212, 160, 32, 0.3);
+    animation: achievementPop 0.5s ease;
+}
+
+@keyframes achievementPop {
+    0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+    50% { transform: translateX(-50%) scale(1.05); }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* ══════════════════════════════════
+   LANDSCAPE ORIENTATION LOCK HINT
+   ══════════════════════════════════ */
+@media (max-width: 768px) and (orientation: portrait) and (max-height: 500px) {
+    body::after {
+        content: '🔄 Rotate for best experience';
+        position: fixed;
+        bottom: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--text-dim);
+        font-size: 10px;
+        z-index: 9999;
+    }
+}

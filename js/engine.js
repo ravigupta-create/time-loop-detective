@@ -3,6 +3,10 @@
    ═══════════════════════════════════════════════════════ */
 
 const Engine = (() => {
+    // ── Game Mode ──
+    let gameMode = 'normal'; // 'normal', 'hard', 'newgameplus', 'speedrun'
+    let speedrunStart = 0;
+
     // ── Game State ──
     const state = {
         screen: 'title',
@@ -64,15 +68,22 @@ const Engine = (() => {
     }
 
     function handleKeyPress(key, event) {
+        // Minigames capture input first
+        if (MiniGames.isActive()) {
+            MiniGames.handleKeyDown(key);
+            return;
+        }
         if (state.screen === 'playing') {
             if (key === 'n') UI.toggleNotebook();
             else if (key === 'w') UI.showWait();
             else if (key === 'f') UI.showFastForward();
             else if (key === 'a') UI.showAccusation();
             else if (key === 'm') UI.toggleSound();
+            else if (key === 'i') Inventory.toggleInventory();
         }
         if (key === 'escape') {
-            if (state.screen === 'notebook') UI.toggleNotebook();
+            if (Inventory.isShowingInventory()) Inventory.toggleInventory();
+            else if (state.screen === 'notebook') UI.toggleNotebook();
             else if (state.screen === 'fast_forward') UI.hideFastForward();
             else if (state.screen === 'accusation') UI.hideAccusation();
             else if (state.screen === 'help') UI.hideHelp();
@@ -81,8 +92,27 @@ const Engine = (() => {
 
     // ── Time Management ──
     function advanceTime(minutes) {
+        const prevHour = Math.floor(state.time / 60);
         state.time += minutes;
         state.totalActions++;
+
+        // Clock chime on the hour
+        const newHour = Math.floor(state.time / 60);
+        if (newHour > prevHour && state.time < 1440) {
+            Audio.playSound('clock_chime');
+            // Show time notification
+            const displayHour = newHour > 12 ? newHour - 12 : newHour;
+            const ampm = newHour >= 12 ? 'PM' : 'AM';
+            notify(`The clock strikes ${displayHour}:00 ${ampm}`);
+        }
+
+        // Tension sting at key moments
+        if (state.time >= 1380 && state.time - minutes < 1380) {
+            Audio.playSound('tension_sting');
+        }
+
+        // Update music tension
+        Audio.updateMusicTension(state.time);
 
         // Check for eavesdrop opportunities
         checkEavesdrops();
@@ -95,6 +125,9 @@ const Engine = (() => {
 
         // Update HUD
         UI.updateHUD();
+
+        // Tutorial triggers
+        UI.checkTutorialTriggers();
 
         // Check for approaching midnight narration
         if (state.time >= 1320 && state.time < 1380) {
@@ -217,9 +250,24 @@ const Engine = (() => {
         state.visitedLocations.add(locationId);
         state.currentLoopEvents.push({ type: 'move', to: locationId, time: state.time });
 
-        advanceTime(15);
+        advanceTime(Math.round(15 * getTimeCostMultiplier()));
 
-        Audio.playSound('footsteps');
+        // Location-aware footstep sounds
+        if (locationId === 'garden') {
+            Audio.playSound('footsteps_grass');
+        } else if (locationId === 'wine_cellar' || locationId === 'tower') {
+            Audio.playSound('footsteps_stone');
+        } else {
+            Audio.playSound('footsteps');
+        }
+        // Door sounds for indoor transitions
+        if (locationId !== 'garden' && state.previousLocation !== 'garden') {
+            Audio.playSound('door_open');
+        }
+        // Random creaking floorboards
+        if (Math.random() < 0.3 && locationId !== 'garden') {
+            setTimeout(() => Audio.playSound('creak'), 400);
+        }
         World.enterLocation(locationId);
     }
 
@@ -279,8 +327,28 @@ const Engine = (() => {
             loop: state.loop,
         });
 
+        // Check for newly unlocked deductions
+        checkDeductions(newEvidenceId);
+
         checkAchievements();
         return true;
+    }
+
+    function checkDeductions(newEvidenceId) {
+        if (!GameData.deductions) return;
+        GameData.deductions.forEach(ded => {
+            // Check if this new evidence completes a deduction
+            if (!ded.requires.includes(newEvidenceId)) return;
+            if (!ded.requires.every(id => state.discoveredEvidence.has(id))) return;
+            // Check if already notified
+            if (state.flags['deduction_' + ded.id]) return;
+            state.flags['deduction_' + ded.id] = true;
+            // Notify
+            setTimeout(() => {
+                notify(`Deduction Unlocked: ${ded.title}`);
+                Audio.playSound('evidence');
+            }, 1500);
+        });
     }
 
     function checkAutoConnections(newEvidenceId) {
@@ -349,6 +417,42 @@ const Engine = (() => {
     // ── Examine Object ──
     function examineObject(objData) {
         state.currentLoopEvents.push({ type: 'examine', id: objData.id, time: state.time });
+
+        // Trigger mini-games for specific objects
+        if (objData.id === 'wall_safe' && state.flags.knows_safe_code && !state.flags.safe_opened) {
+            MiniGames.startSafeCracking((success) => {
+                if (success) {
+                    state.flags.safe_opened = true;
+                    // Discover modified will evidence
+                    if (objData.evidence) discoverEvidence(objData.evidence);
+                    notify('The safe swings open!');
+                }
+            });
+            advanceTime(5);
+            return;
+        }
+
+        if (objData.id === 'bookshelf_secret' && state.bookshelfExamineCount >= 2 && !state.flags.found_secret_passage) {
+            MiniGames.startBookshelfPuzzle((success) => {
+                if (success) {
+                    state.flags.found_secret_passage = true;
+                    state.flags.examined_bookshelf_3_times = true;
+                    discoverEvidence('secret_passage');
+                    notify('A hidden passage revealed!');
+                }
+            });
+            advanceTime(5);
+            return;
+        }
+
+        // Check for inventory pickups at this location
+        const availableItems = Inventory.checkForItems(state.currentLocation);
+        availableItems.forEach(itemId => {
+            const itemDef = Inventory.getItemDef(itemId);
+            if (itemDef && (itemDef.object === objData.id || !itemDef.object)) {
+                Inventory.pickupItem(itemId);
+            }
+        });
 
         // Track bookshelf examinations for secret passage
         if (objData.id === 'bookshelf_secret') {
@@ -435,7 +539,8 @@ const Engine = (() => {
             npcTrust: state.npcTrust,
             visitedLocations: [...state.visitedLocations],
             achievements: [...state.achievements],
-            version: 1,
+            inventory: Inventory.getSaveData(),
+            version: 2,
         };
         try {
             localStorage.setItem('ravenholm_save', JSON.stringify(saveData));
@@ -468,6 +573,8 @@ const Engine = (() => {
             state.currentLoopEvents = [];
             state.talkedTo = new Set();
             state.started = true;
+
+            if (data.inventory) Inventory.loadSaveData(data.inventory);
 
             return true;
         } catch (e) {
@@ -538,6 +645,7 @@ const Engine = (() => {
         if (result === 'true_justice') {
             unlockAchievement('true_detective');
             unlockAchievement('loop_breaker');
+            if (state.totalLoops <= 2) unlockAchievement('perfect_loop');
         }
         if (result === 'prevention') {
             unlockAchievement('prevention');
@@ -564,6 +672,15 @@ const Engine = (() => {
         clock_watcher:  { name: 'Clock Watcher',   desc: 'Discover the Ancient Clock' },
         loop_breaker:   { name: 'Loop Breaker',    desc: 'Break the time loop (any good ending)' },
         prevention:     { name: 'Prevention',      desc: 'Prevent the murder' },
+        // Secret achievements
+        night_owl:      { name: 'Night Owl',       desc: 'Visit every room after 10 PM', secret: true },
+        speed_demon:    { name: 'Speed Demon',     desc: 'Find 10+ evidence in a single loop', secret: true },
+        wallflower:     { name: 'Wallflower',      desc: 'Witness all 6 eavesdrops', secret: true },
+        safe_cracker:   { name: 'Safe Cracker',    desc: 'Open the study safe', secret: true },
+        bookworm:       { name: 'Bookworm',        desc: 'Discover the secret passage via bookshelf', secret: true },
+        ghost_hunter:   { name: 'Ghost Hunter',    desc: 'See a ghostly apparition', secret: true },
+        perfect_loop:   { name: 'Perfect Loop',    desc: 'Solve the case in 3 loops or fewer', secret: true },
+        collector:      { name: 'Collector',        desc: 'Pick up every inventory item', secret: true },
     };
 
     function unlockAchievement(id) {
@@ -627,6 +744,73 @@ const Engine = (() => {
         if (state.discoveredEvidence.has('ancient_clock')) {
             unlockAchievement('clock_watcher');
         }
+
+        // Wallflower — all eavesdrops
+        if (state.eavesdropsWitnessed.size >= 6) {
+            unlockAchievement('wallflower');
+        }
+
+        // Speed Demon — 10+ evidence in one loop
+        const evidenceThisLoop = state.currentLoopEvents.filter(e => e.type === 'evidence').length;
+        if (evidenceThisLoop >= 10) {
+            unlockAchievement('speed_demon');
+        }
+
+        // Night Owl — visit every room after 10 PM
+        if (state.time >= 1320) {
+            const allRooms = Object.keys(GameData.locations);
+            const visitedNow = state.visitedLocations;
+            if (allRooms.every(r => visitedNow.has(r))) {
+                unlockAchievement('night_owl');
+            }
+        }
+
+        // Safe Cracker
+        if (state.flags.safe_opened) {
+            unlockAchievement('safe_cracker');
+        }
+
+        // Bookworm
+        if (state.flags.found_secret_passage && state.flags.examined_bookshelf_3_times) {
+            unlockAchievement('bookworm');
+        }
+
+        // Collector — all inventory items
+        if (Inventory.getItems().length >= Object.keys(Inventory.ITEMS).length) {
+            unlockAchievement('collector');
+        }
+    }
+
+    // ── Game Mode Functions ──
+    function setGameMode(mode) {
+        gameMode = mode;
+        if (mode === 'speedrun') speedrunStart = Date.now();
+    }
+
+    function getGameMode() { return gameMode; }
+
+    function getTimeCostMultiplier() {
+        switch (gameMode) {
+            case 'hard': return 1.5;       // Actions cost 50% more time
+            case 'newgameplus': return 0.8; // Actions cost 20% less time
+            default: return 1;
+        }
+    }
+
+    function getSpeedrunElapsed() {
+        if (gameMode !== 'speedrun' || !speedrunStart) return 0;
+        return Date.now() - speedrunStart;
+    }
+
+    // ── New Game+ Bonuses ──
+    function applyNewGamePlusBonuses() {
+        if (gameMode !== 'newgameplus') return;
+        // Start with magnifying glass
+        Inventory.pickupItem('magnifying_glass');
+        // Unlock master suite and tower from the start
+        state.flags.master_suite_access = true;
+        state.flags.tower_access = true;
+        notify('New Game+ active: Master Suite and Tower unlocked from the start.');
     }
 
     // Public API
@@ -639,5 +823,7 @@ const Engine = (() => {
         makeAccusation, triggerMidnight, startNewLoop,
         checkEavesdrops, achievementDefs, checkAchievements,
         unlockAchievement,
+        setGameMode, getGameMode, getTimeCostMultiplier,
+        getSpeedrunElapsed, applyNewGamePlusBonuses,
     };
 })();

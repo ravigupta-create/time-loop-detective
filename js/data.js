@@ -1840,6 +1840,98 @@ function getTimePeriodName(minutes) {
     return names[tod];
 }
 
+// ── DEDUCTION RULES — Logic chains that unlock conclusions ──
+const deductions = [
+    {
+        id: 'poison_method',
+        title: 'Method: Chronic Poisoning',
+        conclusion: 'Lady Evelyn has been slowly poisoning Lord Ashworth with aconitine extracted from wolfsbane in the greenhouse.',
+        requires: ['poison_vial', 'wolfsbane_garden'],
+        category: 'method',
+        importance: 4,
+    },
+    {
+        id: 'brandy_trap',
+        title: 'The Drugged Brandy',
+        conclusion: 'Lord Ashworth\'s brandy was drugged with a sedative, rendering him helpless for the final act. The empty vial in the dining room contained the sleeping agent.',
+        requires: ['brandy_glass', 'empty_vial'],
+        category: 'method',
+        importance: 3,
+    },
+    {
+        id: 'affair_motive',
+        title: 'Motive: The Affair',
+        conclusion: 'Lady Evelyn and Rex Dalton are having an affair. They planned Lord Ashworth\'s murder together to be free — and wealthy.',
+        requires: ['love_letters', 'rex_shirt'],
+        category: 'motive',
+        importance: 5,
+    },
+    {
+        id: 'evelyn_mastermind',
+        title: 'Evelyn: The Mastermind',
+        conclusion: 'Lady Evelyn orchestrated everything: the chronic poisoning, the drugged brandy, and Rex as her willing accomplice through the secret passage.',
+        requires: ['poison_vial', 'love_letters', 'brandy_note'],
+        category: 'suspect',
+        importance: 5,
+    },
+    {
+        id: 'rex_accomplice',
+        title: 'Rex: The Accomplice',
+        conclusion: 'Rex Dalton used the secret passage to reach Lord Ashworth\'s study after the brandy took effect. His hidden shirt with stains proves physical involvement.',
+        requires: ['secret_passage', 'rex_shirt'],
+        category: 'suspect',
+        importance: 4,
+    },
+    {
+        id: 'james_innocent',
+        title: 'James: Desperate but Innocent',
+        conclusion: 'James had motive (gambling debts, being cut from the will) but no opportunity. His desperation is real, but he\'s not the killer.',
+        requires: ['gambling_debts', 'modified_will'],
+        category: 'suspect',
+        importance: 2,
+    },
+    {
+        id: 'murder_timeline',
+        title: 'Timeline Reconstructed',
+        conclusion: '11:10 PM — Brandy takes effect. 11:20 PM — Rex enters through passage. 11:30 PM — Lord Ashworth is murdered. Midnight — Evelyn "discovers" the body.',
+        requires: ['bell_log', 'brandy_glass', 'secret_passage'],
+        category: 'timeline',
+        importance: 4,
+    },
+    {
+        id: 'ashworth_knew',
+        title: 'Ashworth Knew His Fate',
+        conclusion: 'Lord Ashworth suspected he was being poisoned and wrote about it. He activated the ancient clock to try to cheat death — creating the time loop.',
+        requires: ['ashworth_diary', 'unfinished_letter'],
+        category: 'revelation',
+        importance: 4,
+    },
+    {
+        id: 'loop_origin',
+        title: 'Origin of the Time Loop',
+        conclusion: 'The ancient clock mechanism in the tower is a temporal device. Lord Ashworth activated it the night of his murder, trapping everyone in a repeating day.',
+        requires: ['ancient_clock', 'tower_journal'],
+        category: 'revelation',
+        importance: 5,
+    },
+    {
+        id: 'isabelle_secret',
+        title: 'Isabelle\'s True Identity',
+        conclusion: 'Isabelle Moreau is "M" from the phone log — an undercover investigator Lord Ashworth hired to gather proof of the conspiracy against him.',
+        requires: ['phone_log', 'modified_will'],
+        category: 'suspect',
+        importance: 3,
+    },
+    {
+        id: 'complete_picture',
+        title: 'The Full Truth',
+        conclusion: 'Lady Evelyn and Rex planned to murder Lord Ashworth to inherit his fortune and be together. She poisoned him slowly, then drugged his brandy. Rex delivered the killing blow via the secret passage. Lord Ashworth, suspecting his end, activated the ancient clock — trapping his murderers in an endless loop as punishment.',
+        requires: ['poison_vial', 'love_letters', 'secret_passage', 'brandy_glass', 'ancient_clock'],
+        category: 'revelation',
+        importance: 5,
+    },
+];
+
 // ── ACCUSATION VALIDATION ──
 function validateAccusation(suspect, accomplice, evidencePresented) {
     if (suspect === 'lady_evelyn' && accomplice === 'rex_dalton') {
@@ -1858,7 +1950,7 @@ function validateAccusation(suspect, accomplice, evidencePresented) {
 
 // Public API
 return {
-    locations, mapLayout, npcs, evidence, connections,
+    locations, mapLayout, npcs, evidence, connections, deductions,
     eavesdrops, dialogues, npcGreetings, introSequence, loopMessages,
     endings, narration, formatTime, getTimeOfDay,
     getTimePeriodName, validateAccusation,

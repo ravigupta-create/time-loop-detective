@@ -24,7 +24,11 @@
                 <div id="title-menu">
                     <button class="menu-btn" id="btn-new-game">New Investigation</button>
                     <button class="menu-btn" id="btn-continue" style="display:none">Continue Investigation</button>
+                    <button class="menu-btn secondary" id="btn-hard-mode" style="display:none">Hard Mode</button>
+                    <button class="menu-btn secondary" id="btn-speedrun" style="display:none">Speed Run</button>
+                    <button class="menu-btn secondary" id="btn-newgameplus" style="display:none">New Game+</button>
                     <button class="menu-btn" id="btn-how-to-play">How to Play</button>
+                    <button class="menu-btn" id="btn-settings">Settings</button>
                 </div>
                 <div id="title-footer">100% Free — No Ads — No Tracking — No Dependencies</div>
             </div>
@@ -197,6 +201,53 @@
             </div>
         </div>
 
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <div id="settings-panel">
+                <h2>Settings</h2>
+                <div class="settings-section">
+                    <label>Master Volume</label>
+                    <input type="range" id="setting-volume" min="0" max="100" value="40" class="settings-slider">
+                </div>
+                <div class="settings-section">
+                    <label>Music Volume</label>
+                    <input type="range" id="setting-music" min="0" max="100" value="15" class="settings-slider">
+                </div>
+                <div class="settings-section">
+                    <label>Text Speed</label>
+                    <select id="setting-text-speed" class="settings-select">
+                        <option value="fast">Fast</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="slow">Slow</option>
+                    </select>
+                </div>
+                <div class="settings-section">
+                    <label>Visual Effects</label>
+                    <select id="setting-effects" class="settings-select">
+                        <option value="full" selected>Full</option>
+                        <option value="reduced">Reduced (better performance)</option>
+                        <option value="minimal">Minimal</option>
+                    </select>
+                </div>
+                <div class="settings-section">
+                    <label>Text Size</label>
+                    <select id="setting-text-size" class="settings-select">
+                        <option value="small">Small</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="large">Large</option>
+                    </select>
+                </div>
+                <div class="settings-section">
+                    <label>High Contrast Mode</label>
+                    <select id="setting-contrast" class="settings-select">
+                        <option value="off" selected>Off</option>
+                        <option value="on">On</option>
+                    </select>
+                </div>
+                <button id="settings-close" class="menu-btn">Done</button>
+            </div>
+        </div>
+
         <!-- Loop Recap Screen -->
         <div id="loop-recap-screen" class="screen">
             <div id="loop-recap-panel">
@@ -217,6 +268,10 @@
     <script src="js/engine.js"></script>
     <script src="js/roomviews.js"></script>
     <script src="js/hotspots.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/minigames.js"></script>
+    <script src="js/cutscenes.js"></script>
+    <script src="js/inventory.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/world.js"></script>
     <script src="js/npcs.js"></script>

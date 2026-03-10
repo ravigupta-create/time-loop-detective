@@ -14,8 +14,16 @@ const Hotspots = (() => {
         canvasEl = canvas;
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('click', onClick);
+        canvas.addEventListener('mouseup', onMouseUp);
         canvas.addEventListener('mouseleave', onMouseLeave);
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    }
+
+    function onMouseUp(e) {
+        if (MiniGames.isActive()) {
+            const { x, y } = canvasCoords(e);
+            MiniGames.handleMouseUp(x, y);
+        }
     }
 
     function setRoomHotspots(hotspots) {
@@ -80,6 +88,11 @@ const Hotspots = (() => {
     function onMouseMove(e) {
         if (!enabled) return;
         const { x, y } = canvasCoords(e);
+        // Route to minigames first
+        if (MiniGames.isActive()) {
+            MiniGames.handleMouseMove(x, y);
+            return;
+        }
         const hit = hitTest(x, y);
 
         if (hit !== hoveredHotspot) {
@@ -92,6 +105,11 @@ const Hotspots = (() => {
     function onClick(e) {
         if (!enabled) return;
         const { x, y } = canvasCoords(e);
+        // Route to minigames first
+        if (MiniGames.isActive()) {
+            MiniGames.handleMouseDown(x, y);
+            return;
+        }
         const hit = hitTest(x, y);
         if (hit && hit.action) {
             Audio.playSound('click');

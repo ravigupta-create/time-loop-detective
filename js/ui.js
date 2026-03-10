@@ -5,11 +5,50 @@
 const UI = (() => {
     let examineTimeout = null;
 
+    // ── Settings State ──
+    const settings = {
+        volume: 40,
+        musicVolume: 15,
+        textSpeed: 'normal',
+        effects: 'full',
+        textSize: 'normal',
+        highContrast: false,
+    };
+
+    // ── Tutorial State ──
+    let tutorialStep = 0;
+    let tutorialActive = false;
+    let tutorialShown = {};
+
     function init() {
         // Title screen buttons
         document.getElementById('btn-new-game').addEventListener('click', startNewGame);
         document.getElementById('btn-continue').addEventListener('click', continueGame);
         document.getElementById('btn-how-to-play').addEventListener('click', showHelp);
+        document.getElementById('btn-settings').addEventListener('click', showSettings);
+
+        // Game mode buttons (shown after first completion)
+        document.getElementById('btn-hard-mode').addEventListener('click', () => {
+            Engine.setGameMode('hard');
+            startNewGame();
+        });
+        document.getElementById('btn-speedrun').addEventListener('click', () => {
+            Engine.setGameMode('speedrun');
+            startNewGame();
+        });
+        document.getElementById('btn-newgameplus').addEventListener('click', () => {
+            Engine.setGameMode('newgameplus');
+            startNewGame();
+        });
+
+        // Show game modes if player has completed the game before
+        try {
+            if (localStorage.getItem('ravenholm_completed')) {
+                document.getElementById('btn-hard-mode').style.display = '';
+                document.getElementById('btn-speedrun').style.display = '';
+                document.getElementById('btn-newgameplus').style.display = '';
+            }
+        } catch (e) {}
 
         // HUD buttons
         document.getElementById('btn-notebook').addEventListener('click', toggleNotebook);
@@ -20,6 +59,31 @@ const UI = (() => {
 
         // Help
         document.getElementById('help-close').addEventListener('click', hideHelp);
+
+        // Settings
+        document.getElementById('settings-close').addEventListener('click', hideSettings);
+        document.getElementById('setting-volume').addEventListener('input', (e) => {
+            settings.volume = parseInt(e.target.value);
+            applySettings();
+        });
+        document.getElementById('setting-music').addEventListener('input', (e) => {
+            settings.musicVolume = parseInt(e.target.value);
+            applySettings();
+        });
+        document.getElementById('setting-text-speed').addEventListener('change', (e) => {
+            settings.textSpeed = e.target.value;
+        });
+        document.getElementById('setting-effects').addEventListener('change', (e) => {
+            settings.effects = e.target.value;
+        });
+        document.getElementById('setting-text-size').addEventListener('change', (e) => {
+            settings.textSize = e.target.value;
+            applyTextSize();
+        });
+        document.getElementById('setting-contrast').addEventListener('change', (e) => {
+            settings.highContrast = e.target.value === 'on';
+            applyContrast();
+        });
 
         // Fast forward cancel
         document.getElementById('ff-cancel').addEventListener('click', hideFastForward);
@@ -35,6 +99,9 @@ const UI = (() => {
 
         // Accusation cancel
         document.getElementById('btn-cancel-accuse').addEventListener('click', hideAccusation);
+
+        // Load saved settings
+        loadSettings();
     }
 
     // ── Game Start ──
@@ -42,6 +109,9 @@ const UI = (() => {
         Audio.init();
         Audio.resume();
         Engine.resetState();
+
+        // Apply game mode bonuses
+        Engine.applyNewGamePlusBonuses();
 
         hideAllScreens();
         showIntro();
@@ -306,26 +376,114 @@ const UI = (() => {
     // ── Endings ──
     function showEnding(key, ending) {
         Engine.state.screen = 'ending';
+        Engine.state.endingKey = key;
         hideAllScreens();
         document.getElementById('ending-screen').classList.add('active');
-        Renderer.stopLoop();
         Audio.stopAmbience();
 
         document.getElementById('ending-title').textContent = ending.title;
         document.getElementById('ending-text').textContent = ending.text;
 
         const progress = Mystery.getProgress();
+        const loops = Engine.state.totalLoops + 1;
+        const evPct = Math.round((progress.evidence.found / progress.evidence.total) * 100);
+        const rank = getDetectiveRank(loops, evPct, key);
+
+        // Character epilogues
+        const epilogues = getEpilogues(key);
+
         document.getElementById('ending-stats').innerHTML = `
-            <strong>${ending.rating}</strong><br><br>
-            Total Loops: ${Engine.state.totalLoops + 1}<br>
-            Evidence Found: ${progress.evidence.found}/${progress.evidence.total}<br>
-            NPCs Interviewed: ${progress.npcs.met}/${progress.npcs.total}<br>
-            Conversations Overheard: ${progress.eavesdrops.found}/${progress.eavesdrops.total}<br>
-            Connections Made: ${progress.connections.found}/${progress.connections.total}<br>
-            Total Actions: ${Engine.state.totalActions}
+            <div style="color:var(--amber);font-size:20px;font-family:var(--font-display);margin-bottom:8px">${rank.title}</div>
+            <div style="color:var(--text-dim);font-size:11px;margin-bottom:16px">${rank.description}</div>
+            <strong style="color:var(--amber)">${ending.rating}</strong><br><br>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;margin-bottom:16px">
+                <div>🔄 Loops: <strong>${loops}</strong></div>
+                <div>🔍 Evidence: <strong>${progress.evidence.found}/${progress.evidence.total}</strong></div>
+                <div>👤 NPCs Met: <strong>${progress.npcs.met}/${progress.npcs.total}</strong></div>
+                <div>👂 Overheard: <strong>${progress.eavesdrops.found}/${progress.eavesdrops.total}</strong></div>
+                <div>🔗 Connections: <strong>${progress.connections.found}/${progress.connections.total}</strong></div>
+                <div>⚡ Actions: <strong>${Engine.state.totalActions}</strong></div>
+            </div>
+            <div style="text-align:left;margin-top:12px;border-top:1px solid rgba(212,160,32,0.2);padding-top:12px">
+                <div style="color:var(--amber);font-size:13px;margin-bottom:8px">Epilogues</div>
+                ${epilogues}
+            </div>
+            <div style="margin-top:12px;border-top:1px solid rgba(212,160,32,0.2);padding-top:12px">
+                <div style="color:var(--amber);font-size:13px;margin-bottom:8px">Achievements</div>
+                ${getAchievementSummary()}
+            </div>
         `;
 
+        // Render ending animation on canvas
+        Renderer.startLoop();
+
+        // Mark game as completed (unlocks modes)
+        try { localStorage.setItem('ravenholm_completed', 'true'); } catch (e) {}
+
         Engine.clearSave();
+    }
+
+    function getDetectiveRank(loops, evidencePct, endingKey) {
+        if (endingKey === 'true_justice' && loops <= 3 && evidencePct >= 90) {
+            return { title: '★★★★★ Master Detective', description: 'Exceptional work. Scotland Yard would be envious.' };
+        }
+        if (endingKey === 'true_justice' && loops <= 5) {
+            return { title: '★★★★☆ Senior Inspector', description: 'A thorough and methodical investigation.' };
+        }
+        if (endingKey === 'prevention') {
+            return { title: '★★★★★ Guardian of Time', description: 'You changed fate itself.' };
+        }
+        if (endingKey === 'true_justice') {
+            return { title: '★★★☆☆ Detective', description: 'Justice served, even if it took a while.' };
+        }
+        if (endingKey === 'clock_secret') {
+            return { title: '★★★★☆ Temporal Scholar', description: 'You glimpsed beyond the veil of time.' };
+        }
+        if (endingKey === 'partial_truth') {
+            return { title: '★★☆☆☆ Constable', description: 'Partial truth is still truth, but questions remain.' };
+        }
+        return { title: '★☆☆☆☆ Amateur Sleuth', description: 'The mystery endures.' };
+    }
+
+    function getEpilogues(endingKey) {
+        const chars = {
+            true_justice: [
+                '<strong>Lady Evelyn</strong> — Arrested and tried. Sentenced to life imprisonment.',
+                '<strong>Rex Dalton</strong> — Apprehended attempting to flee. Confessed under questioning.',
+                '<strong>James</strong> — Inherited the estate. Slowly paid off his debts.',
+                '<strong>Lily</strong> — Left for London. Published poetry under a pen name.',
+                '<strong>Dr. Cross</strong> — Retired from medicine. Carried guilt to his grave.',
+                '<strong>Isabelle</strong> — Revealed as investigator. Left the manor. James never forgave the deception.',
+            ],
+            prevention: [
+                '<strong>Lord Ashworth</strong> — Survived the night. Reformed his will. Sought treatment.',
+                '<strong>Lady Evelyn</strong> — Confronted and contained. Committed to an asylum.',
+                '<strong>Rex Dalton</strong> — Fled the country before dawn.',
+                '<strong>The Clock</strong> — Its mechanism fell silent. The loop was broken.',
+            ],
+            partial_truth: [
+                '<strong>The investigation</strong> — One suspect caught, but the full truth remained elusive.',
+                '<strong>Ravenholm</strong> — The manor stood, its secrets not fully told.',
+            ],
+            clock_secret: [
+                '<strong>The Ancient Clock</strong> — You understood its purpose. Time itself acknowledged your wisdom.',
+                '<strong>The Loop</strong> — Neither broken nor eternal. Transformed into something new.',
+            ],
+        };
+        const lines = chars[endingKey] || ['<em>The story continues in the shadows...</em>'];
+        return lines.map(l => `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;line-height:1.4">${l}</div>`).join('');
+    }
+
+    function getAchievementSummary() {
+        const all = Engine.achievementDefs;
+        const unlocked = Engine.state.achievements;
+        let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
+        for (const [id, def] of Object.entries(all)) {
+            const got = unlocked.has(id);
+            html += `<div style="font-size:10px;color:${got ? 'var(--amber)' : 'var(--text-dim)'}">${got ? '★' : '☆'} ${def.name}</div>`;
+        }
+        html += '</div>';
+        return html;
     }
 
     // ── Loop Transition ──
@@ -499,12 +657,129 @@ const UI = (() => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     }
 
+    // ── Settings ──
+    function showSettings() {
+        document.getElementById('settings-screen').classList.add('active');
+    }
+
+    function hideSettings() {
+        document.getElementById('settings-screen').classList.remove('active');
+        saveSettings();
+    }
+
+    function applySettings() {
+        try {
+            Audio.setMasterVolume(settings.volume / 100);
+            Audio.setMusicVolume(settings.musicVolume / 100);
+        } catch (e) {}
+    }
+
+    function applyTextSize() {
+        const body = document.body;
+        body.classList.remove('text-small', 'text-normal', 'text-large');
+        body.classList.add(`text-${settings.textSize}`);
+    }
+
+    function applyContrast() {
+        document.body.classList.toggle('high-contrast', settings.highContrast);
+    }
+
+    function getTextSpeed() {
+        switch (settings.textSpeed) {
+            case 'fast': return 12;
+            case 'slow': return 40;
+            default: return 25;
+        }
+    }
+
+    function getEffectsLevel() {
+        return settings.effects;
+    }
+
+    function saveSettings() {
+        try {
+            localStorage.setItem('ravenholm_settings', JSON.stringify(settings));
+        } catch (e) {}
+    }
+
+    function loadSettings() {
+        try {
+            const saved = localStorage.getItem('ravenholm_settings');
+            if (saved) {
+                Object.assign(settings, JSON.parse(saved));
+                document.getElementById('setting-volume').value = settings.volume;
+                document.getElementById('setting-music').value = settings.musicVolume;
+                document.getElementById('setting-text-speed').value = settings.textSpeed;
+                document.getElementById('setting-effects').value = settings.effects;
+                document.getElementById('setting-text-size').value = settings.textSize;
+                document.getElementById('setting-contrast').value = settings.highContrast ? 'on' : 'off';
+                applyTextSize();
+                applyContrast();
+            }
+        } catch (e) {}
+    }
+
+    // ── Tutorial System ──
+    function showTutorialTip(tipId, message) {
+        if (tutorialShown[tipId]) return;
+        tutorialShown[tipId] = true;
+
+        const tip = document.createElement('div');
+        tip.className = 'tutorial-tip';
+        tip.innerHTML = `<div class="tutorial-tip-content">${message}</div>
+            <button class="tutorial-tip-dismiss">Got it</button>`;
+        document.getElementById('game-container').appendChild(tip);
+
+        requestAnimationFrame(() => tip.classList.add('show'));
+
+        tip.querySelector('.tutorial-tip-dismiss').addEventListener('click', () => {
+            tip.classList.remove('show');
+            setTimeout(() => tip.remove(), 300);
+        });
+
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => {
+            if (tip.parentNode) {
+                tip.classList.remove('show');
+                setTimeout(() => { if (tip.parentNode) tip.remove(); }, 300);
+            }
+        }, 8000);
+    }
+
+    function checkTutorialTriggers() {
+        if (Engine.state.loop > 0) return; // Only on first loop
+        if (Engine.getGameMode() === 'hard') return; // No hints in hard mode
+
+        const evCount = Engine.state.discoveredEvidence.size;
+        const npcCount = Object.keys(Engine.state.notebook.profiles).length;
+
+        if (!tutorialShown.welcome && Engine.state.totalActions <= 1) {
+            showTutorialTip('welcome', '🔍 <strong>Welcome, Detective.</strong> Click on objects to examine them, people to talk, and doors to move between rooms.');
+        }
+        if (!tutorialShown.evidence && evCount === 1) {
+            showTutorialTip('evidence', '📌 <strong>Evidence found!</strong> Press <strong>N</strong> to open your notebook and review your clues.');
+        }
+        if (!tutorialShown.npc && npcCount === 1) {
+            showTutorialTip('npc', '💬 <strong>First contact!</strong> Different dialogue options unlock as you discover more evidence.');
+        }
+        if (!tutorialShown.time && Engine.state.time >= 600) {
+            showTutorialTip('time', '⏰ <strong>Time is passing.</strong> Each action costs time. You have until midnight before the day resets.');
+        }
+        if (!tutorialShown.inventory && Inventory.getItems().length === 1) {
+            showTutorialTip('inventory', '🎒 <strong>Item found!</strong> Press <strong>I</strong> to view your inventory. Use items on objects for special interactions.');
+        }
+    }
+
     return {
         init, updateHUD, toggleNotebook,
         showWait, showFastForward, hideFastForward,
         showAccusation, hideAccusation,
         showLoopTransition, showEavesdrop,
         showExamineText, showLoopRecap, showHelp, hideHelp,
+        showSettings, hideSettings,
         onEvidenceToggle, hideAllScreens, toggleSound,
+        getTextSpeed, getEffectsLevel,
+        showTutorialTip, checkTutorialTriggers,
+        settings,
     };
 })();

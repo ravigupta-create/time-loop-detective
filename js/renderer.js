@@ -59,8 +59,13 @@ const Renderer = (() => {
 
     function render() {
         const screen = Engine.state.screen;
-        if (screen === 'title' || screen === 'intro' || screen === 'ending') {
-            renderBackground();
+        if (screen === 'title' || screen === 'intro') {
+            Cutscenes.renderTitleScene(ctx, width, height);
+        } else if (screen === 'ending') {
+            Cutscenes.renderEndingScene(ctx, width, height, Engine.state.endingKey || 'default', time);
+        } else if (screen === 'minigame') {
+            renderRoom();
+            MiniGames.updateAndRender(ctx, width, height, 0.016);
         } else if (screen === 'playing' || screen === 'dialogue' ||
                    screen === 'notebook' || screen === 'accusation' ||
                    screen === 'fast_forward' || screen === 'eavesdrop') {
@@ -162,8 +167,29 @@ const Renderer = (() => {
         // Hotspot highlights and tooltips
         Hotspots.render(ctx, width, height, time);
 
+        // Effects overlay (tension, dust, moonbeams, candle glow)
+        Effects.renderAll(ctx, width, height, gameTime, Engine.state.currentLocation, brightness, time);
+
+        // Inventory bar at bottom
+        Inventory.renderInventoryBar(ctx, width, height);
+
+        // Speedrun timer overlay
+        if (Engine.getGameMode() === 'speedrun') {
+            renderSpeedrunTimer();
+        }
+
+        // Hard mode indicator
+        if (Engine.getGameMode() === 'hard') {
+            renderModeIndicator('HARD MODE', '#cc3333');
+        } else if (Engine.getGameMode() === 'newgameplus') {
+            renderModeIndicator('NEW GAME+', '#8855bb');
+        }
+
         // Minimap in corner
         renderMinimapOverlay();
+
+        // Atmospheric warning text near midnight
+        renderAtmosphericText(gameTime);
 
         // Vignette
         renderVignette();
@@ -295,49 +321,238 @@ const Renderer = (() => {
         ctx.fillRect(0, 0, width, height);
     }
 
-    // ── NPC Portrait ──
-    function drawPortraitOnCanvas(npcId, targetCanvas) {
+    // ── NPC Portrait (Enhanced with expressions) ──
+    function drawPortraitOnCanvas(npcId, targetCanvas, emotion) {
         const c = targetCanvas.getContext('2d');
         const w = targetCanvas.width;
         const h = targetCanvas.height;
         const npc = GameData.npcs[npcId];
         if (!npc) return;
 
-        c.fillStyle = '#0d0d1a';
+        const emo = emotion || 'neutral';
+
+        // Background gradient
+        const bgGrad = c.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#0d0d1a');
+        bgGrad.addColorStop(1, '#151525');
+        c.fillStyle = bgGrad;
         c.fillRect(0, 0, w, h);
 
-        // Face
-        c.fillStyle = '#c4a882';
+        // Subtle ambient light from side
+        const ambGrad = c.createRadialGradient(w * 0.2, h * 0.3, 0, w * 0.2, h * 0.3, w * 0.6);
+        ambGrad.addColorStop(0, 'rgba(255, 200, 120, 0.04)');
+        ambGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        c.fillStyle = ambGrad;
+        c.fillRect(0, 0, w, h);
+
+        // Neck shadow
+        c.fillStyle = 'rgba(0, 0, 0, 0.15)';
         c.beginPath();
-        c.ellipse(w / 2, h * 0.4, w * 0.25, h * 0.3, 0, 0, Math.PI * 2);
+        c.ellipse(w / 2, h * 0.6, w * 0.12, h * 0.08, 0, 0, Math.PI * 2);
         c.fill();
 
-        // Hair
+        // Face shape (more refined ellipse)
+        const skinTone = npc.skinTone || '#c4a882';
+        const faceShadow = c.createRadialGradient(w * 0.45, h * 0.35, 0, w / 2, h * 0.4, w * 0.28);
+        faceShadow.addColorStop(0, skinTone);
+        faceShadow.addColorStop(0.8, skinTone);
+        faceShadow.addColorStop(1, adjustColor(skinTone, 0.7));
+        c.fillStyle = faceShadow;
+        c.beginPath();
+        c.ellipse(w / 2, h * 0.4, w * 0.24, h * 0.28, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Jawline shadow
+        c.fillStyle = 'rgba(0, 0, 0, 0.06)';
+        c.beginPath();
+        c.ellipse(w / 2, h * 0.52, w * 0.2, h * 0.1, 0, 0, Math.PI);
+        c.fill();
+
+        // Hair (varies by NPC)
         c.fillStyle = npc.color;
+        if (npc.gender === 'female' || npcId === 'lady_evelyn' || npcId === 'lily' ||
+            npcId === 'isabelle' || npcId === 'mrs_blackwood') {
+            // Longer hair
+            c.beginPath();
+            c.ellipse(w / 2, h * 0.22, w * 0.3, h * 0.18, 0, 0, Math.PI);
+            c.fill();
+            // Side hair
+            c.fillRect(w * 0.2, h * 0.22, w * 0.08, h * 0.35);
+            c.fillRect(w * 0.72, h * 0.22, w * 0.08, h * 0.35);
+        } else {
+            // Shorter hair
+            c.beginPath();
+            c.ellipse(w / 2, h * 0.24, w * 0.27, h * 0.17, 0, 0, Math.PI);
+            c.fill();
+        }
+
+        // Eyes (expression-dependent)
+        const eyeY = h * 0.37;
+        const eyeW = w * 0.07;
+        const eyeH = h * 0.035;
+
+        // Eye whites
+        c.fillStyle = '#e8e0d8';
         c.beginPath();
-        c.ellipse(w / 2, h * 0.25, w * 0.28, h * 0.2, 0, 0, Math.PI);
+        c.ellipse(w * 0.38, eyeY, eyeW, eyeH, 0, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(w * 0.62, eyeY, eyeW, eyeH, 0, 0, Math.PI * 2);
         c.fill();
 
-        // Eyes
-        c.fillStyle = '#1a1a2a';
-        c.fillRect(w * 0.35, h * 0.38, w * 0.08, h * 0.04);
-        c.fillRect(w * 0.57, h * 0.38, w * 0.08, h * 0.04);
+        // Pupils (move based on emotion)
+        let pupilOffX = 0, pupilOffY = 0;
+        if (emo === 'nervous') { pupilOffX = -1; pupilOffY = 1; }
+        else if (emo === 'lying') { pupilOffX = 2; pupilOffY = -1; }
+        else if (emo === 'angry') { pupilOffY = -1; }
+        else if (emo === 'sad') { pupilOffY = 1; }
 
-        // Mouth
-        c.strokeStyle = '#8a6a52';
+        c.fillStyle = '#1a1a2a';
+        c.beginPath();
+        c.arc(w * 0.38 + pupilOffX, eyeY + pupilOffY, w * 0.025, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(w * 0.62 + pupilOffX, eyeY + pupilOffY, w * 0.025, 0, Math.PI * 2);
+        c.fill();
+
+        // Eye shine
+        c.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        c.beginPath();
+        c.arc(w * 0.37, eyeY - 1, 1.5, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(w * 0.61, eyeY - 1, 1.5, 0, Math.PI * 2);
+        c.fill();
+
+        // Eyebrows (expression-dependent)
+        c.strokeStyle = adjustColor(npc.color, 0.6);
+        c.lineWidth = 2;
+        if (emo === 'angry') {
+            // Furrowed
+            c.beginPath();
+            c.moveTo(w * 0.30, eyeY - h * 0.05);
+            c.lineTo(w * 0.44, eyeY - h * 0.07);
+            c.stroke();
+            c.beginPath();
+            c.moveTo(w * 0.70, eyeY - h * 0.05);
+            c.lineTo(w * 0.56, eyeY - h * 0.07);
+            c.stroke();
+        } else if (emo === 'nervous' || emo === 'scared') {
+            // Raised
+            c.beginPath();
+            c.moveTo(w * 0.30, eyeY - h * 0.08);
+            c.quadraticCurveTo(w * 0.38, eyeY - h * 0.1, w * 0.44, eyeY - h * 0.07);
+            c.stroke();
+            c.beginPath();
+            c.moveTo(w * 0.70, eyeY - h * 0.08);
+            c.quadraticCurveTo(w * 0.62, eyeY - h * 0.1, w * 0.56, eyeY - h * 0.07);
+            c.stroke();
+        } else if (emo === 'sad') {
+            // Drooped
+            c.beginPath();
+            c.moveTo(w * 0.30, eyeY - h * 0.06);
+            c.lineTo(w * 0.44, eyeY - h * 0.08);
+            c.stroke();
+            c.beginPath();
+            c.moveTo(w * 0.70, eyeY - h * 0.06);
+            c.lineTo(w * 0.56, eyeY - h * 0.08);
+            c.stroke();
+        } else {
+            // Neutral
+            c.beginPath();
+            c.moveTo(w * 0.30, eyeY - h * 0.06);
+            c.lineTo(w * 0.44, eyeY - h * 0.06);
+            c.stroke();
+            c.beginPath();
+            c.moveTo(w * 0.70, eyeY - h * 0.06);
+            c.lineTo(w * 0.56, eyeY - h * 0.06);
+            c.stroke();
+        }
+
+        // Nose (simple)
+        c.strokeStyle = adjustColor(skinTone, 0.8);
         c.lineWidth = 1;
         c.beginPath();
-        c.arc(w / 2, h * 0.52, w * 0.08, 0.1, Math.PI - 0.1);
+        c.moveTo(w * 0.48, h * 0.40);
+        c.lineTo(w * 0.46, h * 0.47);
+        c.lineTo(w * 0.50, h * 0.48);
         c.stroke();
 
-        // Clothes
-        c.fillStyle = npc.color;
-        c.fillRect(w * 0.2, h * 0.68, w * 0.6, h * 0.32);
+        // Mouth (expression-dependent)
+        c.strokeStyle = '#8a6a52';
+        c.lineWidth = 1.5;
+        if (emo === 'angry') {
+            c.beginPath();
+            c.moveTo(w * 0.40, h * 0.53);
+            c.lineTo(w * 0.60, h * 0.53);
+            c.stroke();
+        } else if (emo === 'nervous' || emo === 'lying') {
+            c.beginPath();
+            c.moveTo(w * 0.42, h * 0.535);
+            c.quadraticCurveTo(w * 0.50, h * 0.52, w * 0.58, h * 0.535);
+            c.stroke();
+        } else if (emo === 'sad') {
+            c.beginPath();
+            c.arc(w / 2, h * 0.56, w * 0.07, Math.PI + 0.3, -0.3);
+            c.stroke();
+        } else if (emo === 'happy') {
+            c.beginPath();
+            c.arc(w / 2, h * 0.50, w * 0.07, 0.3, Math.PI - 0.3);
+            c.stroke();
+        } else {
+            c.beginPath();
+            c.arc(w / 2, h * 0.52, w * 0.06, 0.1, Math.PI - 0.1);
+            c.stroke();
+        }
 
-        // Border
+        // Clothing (richer detail)
+        const clothGrad = c.createLinearGradient(w * 0.2, h * 0.65, w * 0.8, h);
+        clothGrad.addColorStop(0, npc.color);
+        clothGrad.addColorStop(1, adjustColor(npc.color, 0.7));
+        c.fillStyle = clothGrad;
+        c.beginPath();
+        c.moveTo(w * 0.15, h);
+        c.lineTo(w * 0.25, h * 0.65);
+        c.quadraticCurveTo(w * 0.5, h * 0.60, w * 0.75, h * 0.65);
+        c.lineTo(w * 0.85, h);
+        c.closePath();
+        c.fill();
+
+        // Collar/lapel detail
+        c.strokeStyle = adjustColor(npc.color, 1.3);
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(w * 0.40, h * 0.63);
+        c.lineTo(w * 0.48, h * 0.72);
+        c.lineTo(w * 0.52, h * 0.72);
+        c.lineTo(w * 0.60, h * 0.63);
+        c.stroke();
+
+        // Lie detection: subtle sweat drops when lying
+        if (emo === 'lying' || emo === 'nervous') {
+            c.fillStyle = 'rgba(180, 200, 220, 0.4)';
+            c.beginPath();
+            c.ellipse(w * 0.72, h * 0.32, 1.5, 2.5, 0.3, 0, Math.PI * 2);
+            c.fill();
+        }
+
+        // Gold ornate border
         c.strokeStyle = '#d4a020';
         c.lineWidth = 2;
         c.strokeRect(1, 1, w - 2, h - 2);
+
+        // Inner border
+        c.strokeStyle = 'rgba(212, 160, 32, 0.3)';
+        c.lineWidth = 1;
+        c.strokeRect(3, 3, w - 6, h - 6);
+
+        // Corner accents
+        const cornerSize = 6;
+        c.fillStyle = '#d4a020';
+        [[1, 1], [w - cornerSize - 1, 1], [1, h - cornerSize - 1], [w - cornerSize - 1, h - cornerSize - 1]].forEach(([cx, cy]) => {
+            c.fillRect(cx, cy, cornerSize, 1);
+            c.fillRect(cx, cy, 1, cornerSize);
+        });
     }
 
     // ── Utility ──
@@ -437,6 +652,61 @@ const Renderer = (() => {
                 ctx.fill();
             }
         }
+    }
+
+    // ── Speedrun Timer ──
+    function renderSpeedrunTimer() {
+        const elapsed = Engine.getSpeedrunElapsed();
+        const totalSeconds = Math.floor(elapsed / 1000);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        const ms = Math.floor((elapsed % 1000) / 10);
+        const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+
+        const x = width / 2;
+        const y = 20;
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        const tw = ctx.measureText(timeStr).width || 100;
+        ctx.fillRect(x - tw / 2 - 16, y - 12, tw + 32, 22);
+
+        // Border
+        ctx.strokeStyle = 'rgba(212, 160, 32, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - tw / 2 - 16, y - 12, tw + 32, 22);
+
+        // Text
+        ctx.fillStyle = '#d4a020';
+        ctx.font = 'bold 14px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(timeStr, x, y + 3);
+        ctx.textAlign = 'start';
+    }
+
+    // ── Atmospheric Warning Text ──
+    function renderAtmosphericText(gameTime) {
+        const msg = Effects.getWarningMessage(gameTime);
+        if (!msg) return;
+
+        const alpha = 0.15 + Math.sin(time * 1.5) * 0.05;
+        ctx.fillStyle = `rgba(180, 60, 60, ${alpha})`;
+        ctx.font = 'italic 12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(msg, width / 2, height - 50);
+        ctx.textAlign = 'start';
+    }
+
+    // ── Game Mode Indicator ──
+    function renderModeIndicator(label, color) {
+        const x = 16;
+        const y = height - 20;
+
+        ctx.fillStyle = color;
+        ctx.font = 'bold 10px "Courier New", monospace';
+        ctx.globalAlpha = 0.5 + Math.sin(time * 2) * 0.2;
+        ctx.fillText(label, x, y);
+        ctx.globalAlpha = 1;
     }
 
     // ── Scanlines ──

@@ -829,15 +829,75 @@ const Notebook = (() => {
         });
     }
 
-    // ── Theories Tab ──
+    // ── Theories Tab (with Deductions) ──
     function renderTheories() {
         const container = document.getElementById('nb-theories');
         const theories = Mystery.getTheories();
 
         let html = '';
 
+        // ── Deductions Section ──
+        const deductions = getUnlockedDeductions();
+        const totalDeductions = GameData.deductions.length;
+
+        if (deductions.length > 0 || Engine.state.discoveredEvidence.size >= 2) {
+            html += `<div style="margin-bottom:20px">
+                <div style="color:var(--amber);font-size:14px;font-family:var(--font-display);margin-bottom:12px;border-bottom:1px solid rgba(212,160,32,0.3);padding-bottom:6px">
+                    Deductions — ${deductions.length}/${totalDeductions}
+                </div>`;
+
+            if (deductions.length === 0) {
+                html += `<div style="color:#6a6a80;font-size:12px;font-style:italic;padding:8px">
+                    Connect more evidence to unlock deductions...
+                </div>`;
+            }
+
+            // Category grouping
+            const catNames = { method: 'Method', motive: 'Motive', suspect: 'Suspects', timeline: 'Timeline', revelation: 'Revelations' };
+            const catIcons = { method: '🔪', motive: '💰', suspect: '👤', timeline: '⏰', revelation: '✨' };
+            const grouped = {};
+            deductions.forEach(d => {
+                if (!grouped[d.category]) grouped[d.category] = [];
+                grouped[d.category].push(d);
+            });
+
+            for (const [cat, items] of Object.entries(grouped)) {
+                html += `<div style="margin-bottom:12px">
+                    <div style="color:#8855bb;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+                        ${catIcons[cat] || '📋'} ${catNames[cat] || cat}
+                    </div>`;
+                items.forEach(d => {
+                    const stars = '★'.repeat(d.importance) + '☆'.repeat(5 - d.importance);
+                    html += `<div style="padding:10px;margin-bottom:8px;background:rgba(136,85,187,0.08);border-left:3px solid #8855bb;border-radius:0 4px 4px 0">
+                        <div style="color:#d4a020;font-size:12px;font-weight:bold;margin-bottom:4px">${d.title}</div>
+                        <div style="color:#c8c8d4;font-size:11px;line-height:1.5">${d.conclusion}</div>
+                        <div style="color:#6a6a80;font-size:10px;margin-top:6px">
+                            ${stars} &nbsp;|&nbsp; Based on: ${d.requires.map(id => {
+                                const ev = GameData.evidence[id];
+                                return ev ? ev.name : id;
+                            }).join(' + ')}
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+
+            // Locked deductions (teaser)
+            const locked = GameData.deductions.filter(d => !deductions.find(u => u.id === d.id));
+            if (locked.length > 0) {
+                html += `<div style="margin-top:8px;color:#3a3a50;font-size:11px;font-style:italic">
+                    ${locked.length} more deduction${locked.length > 1 ? 's' : ''} locked — find more evidence to reveal them.
+                </div>`;
+            }
+
+            html += '</div>';
+        }
+
         // Add theory input
         html += `<div style="margin-bottom:16px">
+            <div style="color:var(--amber);font-size:14px;font-family:var(--font-display);margin-bottom:8px;border-bottom:1px solid rgba(212,160,32,0.3);padding-bottom:6px">
+                Your Theories
+            </div>
             <textarea id="theory-input" placeholder="Write your theory here..." style="
                 width:100%;height:60px;background:rgba(0,0,0,0.3);border:1px solid #252540;
                 color:#c8c8d4;padding:8px;font-family:'Courier New',monospace;font-size:12px;
@@ -913,8 +973,16 @@ const Notebook = (() => {
         }
     }
 
+    // ── Deduction Checking ──
+    function getUnlockedDeductions() {
+        const discovered = Engine.state.discoveredEvidence;
+        return GameData.deductions.filter(d =>
+            d.requires.every(evidenceId => discovered.has(evidenceId))
+        );
+    }
+
     return {
         init, open, close, renderCurrentTab,
-        renderBoard,
+        renderBoard, getUnlockedDeductions,
     };
 })();

@@ -15,6 +15,10 @@
         // Initialize modules in order
         Renderer.init();
         Hotspots.init(document.getElementById('game-canvas'));
+        Effects.init();
+        MiniGames.init();
+        Cutscenes.init();
+        Inventory.init();
         Engine.init();
         World.init();
         NPCs.init();

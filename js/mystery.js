@@ -131,6 +131,13 @@ const Mystery = (() => {
 
     // Get hint about what to investigate next
     function getHint() {
+        // Hard mode: no specific hints
+        try {
+            if (Engine.getGameMode() === 'hard') {
+                return 'Hard mode: no hints. Trust your instincts, Detective.';
+            }
+        } catch (e) {}
+
         const hints = [];
 
         if (!Engine.state.discoveredEvidence.has('business_letter')) {
