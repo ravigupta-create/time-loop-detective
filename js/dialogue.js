@@ -48,7 +48,10 @@ const Dialogue = (() => {
         const specialNodes = [
             'confront_poisoning', 'confront_letters', 'confront_affair',
             'confront_confession', 'confront_glass', 'midnight_testimony',
-            'secret_meeting',
+            'secret_meeting', 'confront_debts', 'confront_insurance',
+            'confront_wolfsbane', 'confront_overheard', 'confront_medical',
+            'confront_negligence', 'confront_embezzlement', 'confront_footprints',
+            'confront_photograph', 'confront_cufflink', 'confront_prophecy',
         ];
 
         for (const nodeId of specialNodes) {
@@ -173,6 +176,41 @@ const Dialogue = (() => {
             'blackwood_testimony': 'SAW Evelyn leaving the Library at 11:45 PM with a vial.',
             'finch_hid_glass': 'Hid the brandy glass on Evelyn\'s orders. Still has it.',
             'isabelle_conflicted': 'Has complex feelings about her role and James.',
+            // Confrontation reveals
+            'james_full_debt_amount': 'Owes £40,000 to dangerous creditors.',
+            'james_needs_father_alive': 'Needs father alive — inheritance goes through probate.',
+            'james_suspects_conspiracy': 'Suspects Evelyn and Rex are working together.',
+            'james_in_danger': 'In danger from Whitechapel creditors.',
+            'insurance_evelyn_rex': 'Found insurance policy — Evelyn and Rex co-signed.',
+            'james_begs_intervention': 'Begged detective to stop whatever Evelyn and Rex are planning.',
+            'lily_confirms_wolfsbane_source': 'Confirmed wolfsbane receipt from Madame Fournier.',
+            'lily_suspected_poisoning': 'Suspected her mother was poisoning her father.',
+            'lily_knows_timing': 'Knows murder will happen at 11:30 in the Library.',
+            'lily_chemistry_knowledge': 'Studies chemistry. Recognized wolfsbane symptoms.',
+            'lily_confirms_timeline': 'Confirmed murder timeline via passage timing notes.',
+            'lily_allied': 'Allied with detective. Will help stop the murder.',
+            'cross_knew_poisoning': 'KNEW about the poisoning for weeks. Documented it.',
+            'cross_complicit': 'Delayed reporting at Lord Ashworth\'s request.',
+            'cross_lethal_dose_warning': 'Warns next dose will be lethal — cardiac arrest.',
+            'cross_failed_duty': 'Admits to being a coward. Failed his duty as physician.',
+            'cross_will_testify': 'Will testify. Ready to do whatever it takes.',
+            'cross_antidote_info': 'Has atropine antidote in his medical bag.',
+            'rex_confirms_insurance': 'Confirms he co-signed the insurance policy.',
+            'rex_denies_murder_plan': 'Denies knowing about murder. Claims he\'s "a thief, not a murderer."',
+            'rex_realizes_truth': 'Realizes Evelyn used passage timing for murder route.',
+            'rex_willful_ignorance': 'Admits willful ignorance about Evelyn\'s true plans.',
+            'rex_garden_confession': 'Was in garden at 10:45 PM clearing passage entrance.',
+            'rex_pawn_realization': 'Realizes he\'s Evelyn\'s patsy, not her partner.',
+            'isabelle_is_daughter': 'REAL IDENTITY: Lord Ashworth\'s biological daughter.',
+            'isabelle_will_beneficiary': 'Ashworth changed will to include her.',
+            'isabelle_protective': 'Fiercely protective of Ashworth. Will die to save him.',
+            'isabelle_backstory': 'Mother Claudette Moreau died when Isabelle was 16.',
+            'isabelle_identifies_cufflink': 'Identified bloody cufflink as Rex Dalton\'s (R.D.).',
+            'isabelle_case_complete': 'Says they have enough evidence to stop the murder.',
+            'thomas_knows_clock': 'Knows the tower clock bends time.',
+            'thomas_remembers_loops': 'Remembers the time loops like the detective.',
+            'thomas_loop_solution': 'Says justice is needed to break the time loop.',
+            'thomas_clock_origin': 'Clock is pre-Roman. Ashworth found it beneath the cellar.',
         };
 
         const note = noteMap[fact];

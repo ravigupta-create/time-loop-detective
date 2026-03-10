@@ -80,6 +80,24 @@ const Engine = (() => {
             else if (key === 'a') UI.showAccusation();
             else if (key === 'm') UI.toggleSound();
             else if (key === 'i') Inventory.toggleInventory();
+            else if (key === 'h' || key === '?') UI.showHelp();
+            else if (key === 's') save();
+            else if (key === 'q') quickSave();
+            // Number keys 1-9 for quick room navigation
+            else if (key >= '1' && key <= '9') {
+                const loc = GameData.locations[state.currentLocation];
+                if (loc) {
+                    const exits = loc.exits.filter(e => !e.requiresFlag || state.flags[e.requiresFlag]);
+                    const idx = parseInt(key) - 1;
+                    if (idx < exits.length) {
+                        Hotspots.setEnabled(false);
+                        Renderer.startRoomTransition(() => {
+                            moveToLocation(exits[idx].to);
+                            Hotspots.setEnabled(true);
+                        });
+                    }
+                }
+            }
         }
         if (key === 'escape') {
             if (Inventory.isShowingInventory()) Inventory.toggleInventory();
@@ -88,6 +106,11 @@ const Engine = (() => {
             else if (state.screen === 'accusation') UI.hideAccusation();
             else if (state.screen === 'help') UI.hideHelp();
         }
+    }
+
+    function quickSave() {
+        save();
+        notify('Game saved.');
     }
 
     // ── Time Management ──
@@ -116,6 +139,15 @@ const Engine = (() => {
 
         // Check for eavesdrop opportunities
         checkEavesdrops();
+
+        // Check for loop-specific events
+        checkLoopEvents();
+
+        // Set post-murder flag after 11:30 PM (murder time)
+        if (state.time >= 1410 && !state.flags.post_murder) {
+            state.flags.post_murder = true;
+            World.refreshActions();
+        }
 
         // Check for midnight
         if (state.time >= 1440) {
@@ -152,6 +184,28 @@ const Engine = (() => {
         }
     }
 
+    function checkLoopEvents() {
+        if (!GameData.loopEvents) return;
+        GameData.loopEvents.forEach(evt => {
+            if (state.flags['loop_event_' + evt.id]) return;
+            if (evt.loop && state.loop < evt.loop) return;
+            if (evt.location && state.currentLocation !== evt.location) return;
+            const timeDiff = Math.abs(state.time - evt.time);
+            if (timeDiff > 20) return;
+            // Trigger
+            state.flags['loop_event_' + evt.id] = true;
+            if (evt.flags) {
+                evt.flags.forEach(f => { state.flags[f] = true; });
+            }
+            notify(evt.description.substring(0, 80) + '...');
+            showNarration(evt.description);
+            // Ghost achievement
+            if (evt.id === 'ghost_apparition') {
+                unlockAchievement('ghost_hunter');
+            }
+        });
+    }
+
     function triggerEavesdrop(eavesdrop) {
         state.eavesdropsWitnessed.add(eavesdrop.id);
         eavesdrop.reveals.forEach(fact => state.knownFacts.add(fact));
@@ -167,6 +221,7 @@ const Engine = (() => {
 
     function triggerMidnight() {
         state.time = 1440;
+        state.flags.post_murder = true;
         UI.updateHUD();
 
         // Record loop history
@@ -328,7 +383,7 @@ const Engine = (() => {
         });
 
         // Check for newly unlocked deductions
-        checkDeductions(newEvidenceId);
+        checkDeductions(evidenceId);
 
         checkAchievements();
         return true;
@@ -393,7 +448,20 @@ const Engine = (() => {
             };
         }
 
+        // NPC trust adjustment for talking
+        if (!state.npcTrust[npcId]) state.npcTrust[npcId] = 0;
+        state.npcTrust[npcId] += 2; // Builds trust over time
+
         advanceTime(10);
+
+        // Wrong accusation consequences — NPCs you wrongly accused are hostile
+        if (state.flags['accused_' + npcId] && state.npcTrust[npcId] < 0) {
+            const hostileMsg = GameData.wrongAccusationDialogue?.npc_hostile ||
+                '"After what you accused me of, I have nothing more to say."';
+            UI.showExamineText(hostileMsg);
+            return;
+        }
+
         Dialogue.startConversation(npcId);
         checkAchievements();
     }
@@ -401,6 +469,19 @@ const Engine = (() => {
     function addFact(fact) {
         state.knownFacts.add(fact);
         checkAchievements();
+    }
+
+    function getNPCTrust(npcId) {
+        return state.npcTrust[npcId] || 0;
+    }
+
+    function adjustNPCTrust(npcId, amount) {
+        if (!state.npcTrust[npcId]) state.npcTrust[npcId] = 0;
+        state.npcTrust[npcId] += amount;
+    }
+
+    function isPostMurder() {
+        return state.time >= 1410 || state.flags.post_murder;
     }
 
     function setFlag(flag) {
@@ -426,6 +507,18 @@ const Engine = (() => {
                     // Discover modified will evidence
                     if (objData.evidence) discoverEvidence(objData.evidence);
                     notify('The safe swings open!');
+                }
+            });
+            advanceTime(5);
+            return;
+        }
+
+        if (objData.id === 'spiral_staircase' && !state.flags.cipher_decoded) {
+            MiniGames.startCipherDecoding((success) => {
+                if (success) {
+                    state.flags.cipher_decoded = true;
+                    discoverEvidence('cipher_message');
+                    notify('The cipher decoded: "THEY WILL KILL AT MIDNIGHT"');
                 }
             });
             advanceTime(5);
@@ -641,6 +734,15 @@ const Engine = (() => {
 
         const result = GameData.validateAccusation(suspect, accomplice, selectedEvidence);
 
+        // Track wrong accusations for NPC reactions
+        if (result === 'wrong_accusation') {
+            state.flags.wrong_accusation_made = true;
+            state.flags['accused_' + suspect] = true;
+            // Decrease trust with accused NPC
+            if (!state.npcTrust[suspect]) state.npcTrust[suspect] = 0;
+            state.npcTrust[suspect] -= 30;
+        }
+
         // Achievement checks for endings
         if (result === 'true_justice') {
             unlockAchievement('true_detective');
@@ -675,7 +777,7 @@ const Engine = (() => {
         // Secret achievements
         night_owl:      { name: 'Night Owl',       desc: 'Visit every room after 10 PM', secret: true },
         speed_demon:    { name: 'Speed Demon',     desc: 'Find 10+ evidence in a single loop', secret: true },
-        wallflower:     { name: 'Wallflower',      desc: 'Witness all 6 eavesdrops', secret: true },
+        wallflower:     { name: 'Wallflower',      desc: 'Witness all eavesdrops', secret: true },
         safe_cracker:   { name: 'Safe Cracker',    desc: 'Open the study safe', secret: true },
         bookworm:       { name: 'Bookworm',        desc: 'Discover the secret passage via bookshelf', secret: true },
         ghost_hunter:   { name: 'Ghost Hunter',    desc: 'See a ghostly apparition', secret: true },
@@ -746,7 +848,7 @@ const Engine = (() => {
         }
 
         // Wallflower — all eavesdrops
-        if (state.eavesdropsWitnessed.size >= 6) {
+        if (state.eavesdropsWitnessed.size >= GameData.eavesdrops.length) {
             unlockAchievement('wallflower');
         }
 
@@ -822,7 +924,7 @@ const Engine = (() => {
         save, load, hasSave, clearSave, resetState,
         makeAccusation, triggerMidnight, startNewLoop,
         checkEavesdrops, achievementDefs, checkAchievements,
-        unlockAchievement,
+        unlockAchievement, getNPCTrust, adjustNPCTrust, isPostMurder,
         setGameMode, getGameMode, getTimeCostMultiplier,
         getSpeedrunElapsed, applyNewGamePlusBonuses,
     };

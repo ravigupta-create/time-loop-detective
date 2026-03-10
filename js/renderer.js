@@ -188,6 +188,11 @@ const Renderer = (() => {
         // Minimap in corner
         renderMinimapOverlay();
 
+        // Post-murder visual effects
+        if (Engine.isPostMurder()) {
+            renderPostMurderOverlay(gameTime);
+        }
+
         // Atmospheric warning text near midnight
         renderAtmosphericText(gameTime);
 
@@ -707,6 +712,35 @@ const Renderer = (() => {
         ctx.globalAlpha = 0.5 + Math.sin(time * 2) * 0.2;
         ctx.fillText(label, x, y);
         ctx.globalAlpha = 1;
+    }
+
+    // ── Post-Murder Overlay ──
+    function renderPostMurderOverlay(gameTime) {
+        // Red-tinged atmosphere after the murder
+        const intensity = Math.min(0.15, (gameTime - 1410) / 300 * 0.15);
+        ctx.fillStyle = `rgba(80, 10, 10, ${intensity})`;
+        ctx.fillRect(0, 0, width, height);
+
+        // Pulsing crimson edges
+        const pulse = Math.sin(time * 2) * 0.03 + 0.05;
+        const edgeGrad = ctx.createRadialGradient(
+            width / 2, height / 2, width * 0.2,
+            width / 2, height / 2, width * 0.65
+        );
+        edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        edgeGrad.addColorStop(1, `rgba(100, 20, 20, ${pulse})`);
+        ctx.fillStyle = edgeGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // "MURDER" text flash in library
+        if (Engine.state.currentLocation === 'library') {
+            const flashAlpha = Math.sin(time * 3) * 0.05 + 0.05;
+            ctx.fillStyle = `rgba(180, 30, 30, ${flashAlpha})`;
+            ctx.font = 'bold 48px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('CRIME SCENE', width / 2, height * 0.15);
+            ctx.textAlign = 'start';
+        }
     }
 
     // ── Scanlines ──

@@ -546,6 +546,172 @@ const MiniGames = (() => {
     }
 
     // ══════════════════════════════════════════════════
+    // CIPHER DECODING
+    // ══════════════════════════════════════════════════
+    function startCipherDecoding(callback) {
+        active = 'cipher';
+        onComplete = callback;
+        // Caesar cipher with shift 3: "THEY WILL KILL AT MIDNIGHT"
+        const plaintext = 'THEY WILL KILL AT MIDNIGHT';
+        const ciphertext = 'WKHB ZLOO NLOO DW PLGQLJKW';
+        mgState = {
+            ciphertext,
+            plaintext,
+            shift: 3,
+            currentShift: 0,     // player's current guess
+            decoded: '',
+            solved: false,
+            feedback: '',
+            feedbackTimer: 0,
+            hintShown: false,
+            wheelAngle: 0,
+            glowPulse: 0,
+        };
+        mgState.decoded = decodeCaesar(ciphertext, mgState.currentShift);
+        Engine.state.screen = 'minigame';
+        Audio.playSound('click');
+    }
+
+    function decodeCaesar(text, shift) {
+        return text.split('').map(c => {
+            if (c >= 'A' && c <= 'Z') {
+                const code = ((c.charCodeAt(0) - 65 - shift + 26) % 26) + 65;
+                return String.fromCharCode(code);
+            }
+            return c;
+        }).join('');
+    }
+
+    function updateCipher(dt) {
+        const s = mgState;
+        s.glowPulse += dt * 2;
+        if (s.feedbackTimer > 0) {
+            s.feedbackTimer -= dt;
+            if (s.feedbackTimer <= 0) s.feedback = '';
+        }
+    }
+
+    function renderCipher(mainCtx, w, h) {
+        const s = mgState;
+        mgW = w; mgH = h;
+
+        mainCtx.fillStyle = 'rgba(0, 0, 0, 0.90)';
+        mainCtx.fillRect(0, 0, w, h);
+
+        const panelW = Math.min(550, w * 0.65);
+        const panelH = Math.min(380, h * 0.65);
+        const px = (w - panelW) / 2;
+        const py = (h - panelH) / 2;
+
+        // Panel background
+        mainCtx.fillStyle = '#151520';
+        mainCtx.fillRect(px, py, panelW, panelH);
+        mainCtx.strokeStyle = '#4488cc';
+        mainCtx.lineWidth = 2;
+        mainCtx.strokeRect(px, py, panelW, panelH);
+
+        // Title
+        mainCtx.font = 'bold 18px "Courier New", monospace';
+        mainCtx.fillStyle = '#4488cc';
+        mainCtx.textAlign = 'center';
+        mainCtx.fillText('CIPHER DECODER', w / 2, py + 30);
+
+        // Cipher text (encoded)
+        mainCtx.font = '14px "Courier New", monospace';
+        mainCtx.fillStyle = '#6a6a80';
+        mainCtx.fillText('Encoded:', w / 2, py + 60);
+        mainCtx.font = 'bold 20px "Courier New", monospace';
+        mainCtx.fillStyle = '#cc6666';
+        // Split long text
+        const half = Math.ceil(s.ciphertext.length / 2);
+        const line1 = s.ciphertext.substring(0, s.ciphertext.indexOf(' ', half - 3));
+        const line2 = s.ciphertext.substring(s.ciphertext.indexOf(' ', half - 3) + 1);
+        mainCtx.fillText(line1, w / 2, py + 90);
+        mainCtx.fillText(line2, w / 2, py + 115);
+
+        // Decoded text (current guess)
+        mainCtx.font = '14px "Courier New", monospace';
+        mainCtx.fillStyle = '#6a6a80';
+        mainCtx.fillText('Decoded:', w / 2, py + 150);
+        mainCtx.font = 'bold 20px "Courier New", monospace';
+        mainCtx.fillStyle = s.solved ? '#44cc44' : '#d4a020';
+        const dHalf = Math.ceil(s.decoded.length / 2);
+        const dLine1 = s.decoded.substring(0, s.decoded.indexOf(' ', dHalf - 3));
+        const dLine2 = s.decoded.substring(s.decoded.indexOf(' ', dHalf - 3) + 1);
+        mainCtx.fillText(dLine1, w / 2, py + 180);
+        mainCtx.fillText(dLine2, w / 2, py + 205);
+
+        // Shift wheel
+        const wheelX = w / 2;
+        const wheelY = py + panelH - 90;
+        const wheelR = 35;
+
+        // Wheel background
+        mainCtx.beginPath();
+        mainCtx.arc(wheelX, wheelY, wheelR + 4, 0, Math.PI * 2);
+        mainCtx.fillStyle = '#1a1a2e';
+        mainCtx.fill();
+        mainCtx.strokeStyle = '#4488cc';
+        mainCtx.lineWidth = 2;
+        mainCtx.stroke();
+
+        // Wheel number
+        mainCtx.font = 'bold 24px "Courier New", monospace';
+        mainCtx.fillStyle = '#d4a020';
+        mainCtx.fillText(String(s.currentShift), wheelX, wheelY + 8);
+
+        // Arrows
+        mainCtx.font = '20px sans-serif';
+        mainCtx.fillStyle = '#4488cc';
+        mainCtx.fillText('◀', wheelX - wheelR - 25, wheelY + 7);
+        mainCtx.fillText('▶', wheelX + wheelR + 15, wheelY + 7);
+
+        // Shift label
+        mainCtx.font = '12px "Courier New", monospace';
+        mainCtx.fillStyle = '#6a6a80';
+        mainCtx.fillText(`Shift: ${s.currentShift} / 25`, wheelX, wheelY + wheelR + 20);
+
+        // Instructions
+        mainCtx.fillStyle = '#6a6a80';
+        mainCtx.fillText('Click arrows or use ← → to rotate the cipher wheel', w / 2, py + panelH - 15);
+
+        // Hint
+        if (Engine.state.loop >= 3) {
+            mainCtx.fillStyle = 'rgba(68, 136, 204, 0.5)';
+            mainCtx.fillText('Hint: Caesar cipher. Try small shifts...', w / 2, py - 15);
+        }
+
+        // Feedback
+        if (s.feedback) {
+            mainCtx.font = '16px monospace';
+            mainCtx.fillStyle = s.solved ? '#44cc44' : '#d4a020';
+            mainCtx.fillText(s.feedback, w / 2, py + panelH + 25);
+        }
+
+        mainCtx.fillStyle = '#555';
+        mainCtx.font = '12px monospace';
+        mainCtx.fillText('Press ESC to cancel', w / 2, py + panelH + 45);
+        mainCtx.textAlign = 'start';
+    }
+
+    function cipherShift(dir) {
+        const s = mgState;
+        if (s.solved) return;
+        s.currentShift = ((s.currentShift + dir) % 26 + 26) % 26;
+        s.decoded = decodeCaesar(s.ciphertext, s.currentShift);
+
+        if (s.currentShift === s.shift) {
+            s.solved = true;
+            s.feedback = 'Message decoded!';
+            Audio.playSound('evidence');
+            setTimeout(() => {
+                closeMiniGame();
+                if (onComplete) onComplete(true);
+            }, 1500);
+        }
+    }
+
+    // ══════════════════════════════════════════════════
     // INPUT HANDLING
     // ══════════════════════════════════════════════════
     let isDragging = false;
@@ -554,6 +720,23 @@ const MiniGames = (() => {
 
     function handleMouseDown(x, y) {
         if (!active) return false;
+
+        if (active === 'cipher') {
+            // Click arrows to shift
+            const wheelX = mgW / 2;
+            const panelW = Math.min(550, mgW * 0.65);
+            const panelH = Math.min(380, mgH * 0.65);
+            const wheelY = (mgH - panelH) / 2 + panelH - 90;
+            const wheelR = 35;
+            if (x < wheelX - wheelR && x > wheelX - wheelR - 40 &&
+                Math.abs(y - wheelY) < 25) {
+                cipherShift(-1);
+            } else if (x > wheelX + wheelR && x < wheelX + wheelR + 40 &&
+                Math.abs(y - wheelY) < 25) {
+                cipherShift(1);
+            }
+            return true;
+        }
 
         if (active === 'safe') {
             isDragging = true;
@@ -694,6 +877,11 @@ const MiniGames = (() => {
             if (onComplete) onComplete(false);
             return true;
         }
+        if (active === 'cipher') {
+            if (key === 'arrowleft') cipherShift(-1);
+            else if (key === 'arrowright') cipherShift(1);
+            return true;
+        }
         return active !== null;
     }
 
@@ -718,6 +906,9 @@ const MiniGames = (() => {
         } else if (active === 'bookshelf') {
             updateBookshelf(dt);
             renderBookshelf(mainCtx, w, h);
+        } else if (active === 'cipher') {
+            updateCipher(dt);
+            renderCipher(mainCtx, w, h);
         }
         return true;
     }
@@ -729,6 +920,7 @@ const MiniGames = (() => {
     return {
         init,
         startSafeCracking, startLockPicking, startBookshelfPuzzle,
+        startCipherDecoding,
         updateAndRender, isActive,
         handleMouseDown, handleMouseMove, handleMouseUp, handleKeyDown,
     };

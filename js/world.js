@@ -23,11 +23,15 @@ const World = (() => {
         showScreen('room-view');
 
         // Description and narration — use time-of-day variant if available
+        // Post-murder descriptions override normal ones after 11:30 PM
+        const isPostMurder = Engine.isPostMurder();
+        const postMurderDesc = isPostMurder && GameData.postMurderDescriptions?.[locationId];
+
         const rawTod = GameData.getTimeOfDay(Engine.state.time);
         // Map detailed time periods to description keys (fallback for late_morning, late_afternoon, late_night)
         const todMap = { late_morning: 'morning', late_afternoon: 'afternoon', late_night: 'night' };
         const tod = todMap[rawTod] || rawTod;
-        const desc = loc.descriptions?.[tod] || loc.description;
+        const desc = postMurderDesc || loc.descriptions?.[tod] || loc.description;
         const descEl = document.getElementById('room-description');
         descEl.textContent = desc;
         descEl.classList.add('fade-in');
