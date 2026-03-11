@@ -8,6 +8,107 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
 </head>
 <body>
+    <!-- Password Gate -->
+    <div id="pw-gate" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0a14;display:flex;align-items:center;justify-content:center;z-index:99999;font-family:'Courier New',monospace;">
+        <div id="pw-box" style="background:#1a1a2e;border:2px solid #d4a020;padding:32px 40px;border-radius:8px;text-align:center;min-width:300px;">
+            <div style="color:#d4a020;font-size:22px;font-weight:bold;letter-spacing:2px;margin-bottom:4px;">RAVENHOLM</div>
+            <div style="color:#6a6a80;font-size:12px;margin-bottom:20px;">Enter password to continue</div>
+            <input id="pw-input" type="password" placeholder="Password" autofocus
+                style="background:#0d0d1a;color:#e0e0e0;border:1px solid #6a6a80;padding:10px 14px;font-size:14px;font-family:monospace;width:220px;text-align:center;border-radius:4px;outline:none;">
+            <div id="pw-error" style="color:#ff4040;font-size:12px;margin-top:10px;min-height:16px;"></div>
+            <div id="pw-lockout" style="color:#ff4040;font-size:13px;margin-top:8px;display:none;"></div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        var HASH = 'cab35aec';
+        var MAX_ATTEMPTS = 4;
+        var LOCKOUT_MS = 5 * 60 * 1000;
+        var LS_AUTH = 'rh_auth';
+        var LS_LOCK = 'rh_lockout';
+        var LS_TRIES = 'rh_tries';
+
+        function simpleHash(s) {
+            var h = 0;
+            for (var i = 0; i < s.length; i++) {
+                h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+            }
+            return (h >>> 0).toString(16);
+        }
+
+        var gate = document.getElementById('pw-gate');
+        var input = document.getElementById('pw-input');
+        var errorEl = document.getElementById('pw-error');
+        var lockoutEl = document.getElementById('pw-lockout');
+        var lockTimer = null;
+
+        // Already authenticated this session
+        if (sessionStorage.getItem(LS_AUTH) === '1') {
+            gate.style.display = 'none';
+            return;
+        }
+
+        // Check lockout
+        var tries = parseInt(localStorage.getItem(LS_TRIES) || '0', 10);
+        var lockUntil = parseInt(localStorage.getItem(LS_LOCK) || '0', 10);
+
+        function showLockout() {
+            input.style.display = 'none';
+            errorEl.style.display = 'none';
+            lockoutEl.style.display = '';
+            lockTimer = setInterval(updateLockout, 1000);
+            updateLockout();
+        }
+
+        function updateLockout() {
+            var remaining = lockUntil - Date.now();
+            if (remaining <= 0) {
+                clearInterval(lockTimer);
+                localStorage.removeItem(LS_LOCK);
+                localStorage.setItem(LS_TRIES, '0');
+                tries = 0;
+                input.style.display = '';
+                input.value = '';
+                input.focus();
+                errorEl.textContent = '';
+                errorEl.style.display = '';
+                lockoutEl.style.display = 'none';
+                return;
+            }
+            var min = Math.floor(remaining / 60000);
+            var sec = Math.floor((remaining % 60000) / 1000);
+            lockoutEl.textContent = 'Locked out. Try again in ' + min + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        if (lockUntil > Date.now()) {
+            showLockout();
+        }
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter') return;
+            var val = input.value;
+            if (simpleHash(val) === HASH) {
+                sessionStorage.setItem(LS_AUTH, '1');
+                localStorage.removeItem(LS_TRIES);
+                localStorage.removeItem(LS_LOCK);
+                gate.style.display = 'none';
+            } else {
+                tries++;
+                localStorage.setItem(LS_TRIES, String(tries));
+                if (tries >= MAX_ATTEMPTS) {
+                    lockUntil = Date.now() + LOCKOUT_MS;
+                    localStorage.setItem(LS_LOCK, String(lockUntil));
+                    showLockout();
+                } else {
+                    errorEl.textContent = 'Wrong password. ' + (MAX_ATTEMPTS - tries) + ' attempt' + (MAX_ATTEMPTS - tries === 1 ? '' : 's') + ' left.';
+                    input.value = '';
+                    input.focus();
+                }
+            }
+        });
+    })();
+    </script>
+
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
 
