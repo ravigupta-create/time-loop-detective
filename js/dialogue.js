@@ -9,12 +9,18 @@ const Dialogue = (() => {
     let typewriterText = '';
     let typewriterIndex = 0;
     let isTyping = false;
+    let typewriterCallback = null;
 
     function init() {
         // Click to skip typewriter
         document.getElementById('dialogue-text').addEventListener('click', () => {
             if (isTyping) {
                 finishTypewriter();
+                if (typewriterCallback) {
+                    const cb = typewriterCallback;
+                    typewriterCallback = null;
+                    cb();
+                }
             }
         });
     }
@@ -305,6 +311,7 @@ const Dialogue = (() => {
         typewriterText = text;
         typewriterIndex = 0;
         isTyping = true;
+        typewriterCallback = onComplete;
         el.textContent = '';
 
         typewriterTimer = setInterval(() => {
@@ -314,7 +321,11 @@ const Dialogue = (() => {
                 if (typewriterIndex % 3 === 0) Audio.playSound('typewriter');
             } else {
                 finishTypewriter();
-                if (onComplete) onComplete();
+                if (typewriterCallback) {
+                    const cb = typewriterCallback;
+                    typewriterCallback = null;
+                    cb();
+                }
             }
         }, 25);
     }
