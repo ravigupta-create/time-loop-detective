@@ -767,7 +767,7 @@ const AutoPlay = (() => {
         if (urgentEavesdrop && currentLoc !== urgentEavesdrop.location) {
             const hotspots = Hotspots.getHotspots();
             const exitHS = hotspots.find(hs =>
-                hs.type === 'exit' && hs.action && isExitToward(hs, urgentEavesdrop.location)
+                hs.type === 'exit' && hs.action && !isExitLocked(hs) && isExitToward(hs, urgentEavesdrop.location)
             );
             if (exitHS) {
                 enqueue({ type: 'hover', target: exitHS, ms: rand(500, 1000) });
@@ -786,7 +786,7 @@ const AutoPlay = (() => {
 
         const evidence = [], npcs = [], objects = [], exits = [];
         hotspots.forEach(hs => {
-            if (hs.type === 'exit') exits.push(hs);
+            if (hs.type === 'exit' && !isExitLocked(hs)) exits.push(hs);
             else if (hs.type === 'npc') npcs.push(hs);
             else if (hs.hasEvidence && !state.discoveredEvidence.has(hs.evidenceId)) evidence.push(hs);
             else if (hs.type === 'object' || hs.type === 'examine') objects.push(hs);
@@ -1059,7 +1059,7 @@ const AutoPlay = (() => {
         if (urgentEavesdrop && currentLoc !== urgentEavesdrop.location) {
             const hotspots = Hotspots.getHotspots();
             const exitHS = hotspots.find(hs =>
-                hs.type === 'exit' && hs.action && isExitToward(hs, urgentEavesdrop.location)
+                hs.type === 'exit' && hs.action && !isExitLocked(hs) && isExitToward(hs, urgentEavesdrop.location)
             );
             if (exitHS) {
                 enqueue({ type: 'click', target: exitHS, ms: MAX_DELAY });
@@ -1086,7 +1086,7 @@ const AutoPlay = (() => {
 
         const evidence = [], npcs = [], objects = [], exits = [];
         hotspots.forEach(hs => {
-            if (hs.type === 'exit') exits.push(hs);
+            if (hs.type === 'exit' && !isExitLocked(hs)) exits.push(hs);
             else if (hs.type === 'npc') npcs.push(hs);
             else if (hs.hasEvidence && !state.discoveredEvidence.has(hs.evidenceId)) evidence.push(hs);
             else if (hs.type === 'object' || hs.type === 'examine') objects.push(hs);
@@ -1336,6 +1336,10 @@ const AutoPlay = (() => {
     }
 
     // ── Helpers ──
+
+    function isExitLocked(hs) {
+        return hs.label && (hs.label.includes('🔒') || hs.label.includes('Locked'));
+    }
 
     function isExitToward(hs, targetLocation) {
         if (!hs.label) return false;
