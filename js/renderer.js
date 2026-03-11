@@ -1116,15 +1116,20 @@ const Renderer = (() => {
     function renderAutoPlayIndicator() {
         if (typeof AutoPlay === 'undefined' || !AutoPlay.isRunning()) return;
 
-        // "AUTO" text
-        const pulse = 0.6 + Math.sin(time * 4) * 0.4;
+        const isMax = AutoPlay.isMaxMode && AutoPlay.isMaxMode();
+
+        // Mode label
+        const pulse = isMax ? 1.0 : 0.6 + Math.sin(time * 4) * 0.4;
         ctx.save();
         ctx.globalAlpha = pulse;
         ctx.font = 'bold 14px "Courier New", monospace';
-        ctx.fillStyle = '#d4a020';
+        ctx.fillStyle = isMax ? '#ff4040' : '#d4a020';
         ctx.textAlign = 'left';
-        ctx.fillText('AUTO', 16, 42);
+        ctx.fillText(isMax ? 'MAX' : 'AUTO', 16, 42);
         ctx.restore();
+
+        // No ghost cursor in max mode
+        if (isMax) return;
 
         // Ghost cursor — soft glowing circle showing where the "player" is looking
         const cur = AutoPlay.getCursor();
